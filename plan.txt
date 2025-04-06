@@ -1,0 +1,12 @@
+Idea 
+create ww2 documentry videos from scratch using ai and
+a automatic youtube documentry generator using videos from a file and python and evelen labs for narration
+i want to use ai to creat the video from the .mp4s
+one hour and 40 minutes long
+smooth british narrarator
+for youtube videos
+long form video
+clips are taken from a folder with .mp4s and extracted from them and then put together in a full video
+
+ChatGpt for narration text creation
+evelen labs for TTS
