@@ -8,7 +8,7 @@ def create_transcript_folder():
     os.makedirs("Transcript", exist_ok=True)
     print("[OK] Transcript folder ready")
 
-def generate_transcript(topic, model="gpt-4o-mini"):
+def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
     """Generate a transcript for a YouTube video about a World War 2 battle"""
     
     # Check if API key is available
@@ -24,12 +24,15 @@ def generate_transcript(topic, model="gpt-4o-mini"):
     Create a detailed historical transcript for a YouTube video about {topic} during World War II.
     
     The transcript should:
+    - Be in the style of a war report
     - Begin with an engaging introduction about the historical context
     - Cover key events in chronological order
     - Explain military strategies and tactical decisions
     - Include personal stories or accounts from soldiers involved
     - Mention the impact and significance of this battle
-    - End with a meaningful conclusion about the battle's legacy
+    - Do not include any other text than the transcript
+    - Do not Highlight the text with anything 
+    - Do not do [INTRO] or [CHRONOLOGY] or [TACTICS AND STRATEGIES] or [PERSONAL ACCOUNTS] or [IMPACT AND SIGNIFICANCE] or [CONCLUSION] type of patterns
     
     Format as a single cohesive block of text optimized for text-to-speech narration.
     Use clear transitions between topics and maintain an engaging, educational tone.

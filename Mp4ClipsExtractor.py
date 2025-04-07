@@ -4,6 +4,7 @@ import numpy as np
 from moviepy import VideoFileClip
 import time
 import logging
+import uuid
 from typing import Tuple, List, Dict
 
 # Configure logging
@@ -20,6 +21,10 @@ class Mp4ClipsExtractor:
         
         # Ensure output directory exists
         os.makedirs(self.output_folder, exist_ok=True)
+        
+        # Ensure old videos directory exists
+        self.old_videos_folder = os.path.join(self.raw_folder, "old")
+        os.makedirs(self.old_videos_folder, exist_ok=True)
         
         logger.info(f"Mp4ClipsExtractor initialized with: min_dur={min_clip_duration}s, max_dur={max_clip_duration}s, threshold={scene_threshold}")
 
@@ -137,9 +142,11 @@ class Mp4ClipsExtractor:
             with VideoFileClip(video_path) as video:
                 for i, clip in enumerate(clips):
                     # Format the filename
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    date = time.strftime("%Y%m%d")
+                    unique_id = str(uuid.uuid4())
                     duration = clip['end'] - clip['start']
-                    base_name = f"{i+1:03d}_clip_{duration:.1f}sec_{timestamp}"
+                    original_name = os.path.splitext(video_file)[0]
+                    base_name = f"{unique_id}_{date}_{original_name}_{duration:.1f}"
                     output_file = os.path.join(self.output_folder, f"{base_name}.mp4")
                     
                     # Extract the subclip
@@ -174,6 +181,16 @@ class Mp4ClipsExtractor:
             clips, fps = self.extract_clips(video_file)
             if clips:
                 self.save_clips(video_file, clips, fps)
+                
+                # Move the original video to the "old" folder
+                original_path = os.path.join(self.raw_folder, video_file)
+                destination_path = os.path.join(self.old_videos_folder, video_file)
+                
+                try:
+                    os.rename(original_path, destination_path)
+                    logger.info(f"Moved processed video to old folder: {video_file}")
+                except Exception as e:
+                    logger.error(f"Failed to move video {video_file} to old folder: {e}")
 
 def main():
     extractor = Mp4ClipsExtractor()

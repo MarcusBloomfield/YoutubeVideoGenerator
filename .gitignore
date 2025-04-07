@@ -174,3 +174,11 @@ cython_debug/
 *.aac
 *.ogg
 *.flac
+
+# Txt files
+*.txt
+
+# CSV files
+*.csv
+
+
