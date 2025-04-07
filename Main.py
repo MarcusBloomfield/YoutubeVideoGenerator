@@ -8,6 +8,9 @@ import ParseTranscriptsToCsv
 import MatchAudioToTranscriptInCsv
 import SetTranscriptCsvKeywords
 import SetTranscriptCsvLength
+import GenerateScenes
+import Combine
+
 
 def main():
     Mp4ClipsExtractor().main()
@@ -23,7 +26,8 @@ def main():
     SetTranscriptCsvKeywords().main()
     SetTranscriptCsvLength().main()
 
-
+    GenerateScenes().main()
+    Combine().main()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import datetime
 
 def parse_filename(filename):
     # Regex pattern to extract info from filename format: UUID_DATE_LOCATION_LENGTH.mp4
-    pattern = r'([a-f0-9-]+)_(\d+)_([A-Za-z]+)_(\d+\.\d+)\.mp4'
+    pattern = r'([a-f0-9-]+)_(\d+)_([^_]+)_(\d+\.\d+)\.mp4'
     match = re.match(pattern, filename)
     
     if match:

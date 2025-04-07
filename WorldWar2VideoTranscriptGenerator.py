@@ -37,7 +37,7 @@ def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
     Format as a single cohesive block of text optimized for text-to-speech narration.
     Use clear transitions between topics and maintain an engaging, educational tone.
     Include specific dates, locations, key figures, and accurate historical details.
-    Aim for approximately 800-1000 words of rich, detailed content.
+    Aim for approximately 10,000 words of rich, detailed content.
     """
     
     # Query OpenAI for the transcript

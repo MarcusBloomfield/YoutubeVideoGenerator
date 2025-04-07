@@ -4,6 +4,7 @@ import subprocess
 import pandas as pd
 from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips
 from OpenAiQuerying import query_openai, check_api_key
+import random
 
 def ensure_dir(directory):
     """Ensure directory exists, create if it doesn't"""
@@ -108,7 +109,7 @@ Return a JSON array with just the clip IDs in your preferred order, like:
                                 used_clip_ids.add(clip_id)
                                 current_length += float(clip['length'])
                                 # If we have enough clips, break
-                                if current_length >= transcript_length * 0.95:
+                                if current_length >= transcript_length * 1.25 + random.uniform(0, .50):
                                     break
                     except json.JSONDecodeError:
                         print("Could not parse AI response as JSON, falling back to basic matching")

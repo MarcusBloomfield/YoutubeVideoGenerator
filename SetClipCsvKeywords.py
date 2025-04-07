@@ -43,7 +43,7 @@ class ClipRenamer:
         
         try:
             # Query OpenAI with the frame
-            prompt = "Describe what's happening in this video frame in 1-10 keywords. Focus only on what is in the scene."
+            prompt = "Describe what's happening in this video frame in 10 or more keywords. Focus only on what is in the scene. Return only the keywords, no other text. No other formatting. Example: Truck, Soliders, Road, Plane, Explosion"
             response = query_openai(
                 prompt=prompt,
                 model="gpt-4o",
@@ -188,6 +188,38 @@ class ClipRenamer:
             logger.error(f"Error writing CSV file: {e}")
             return False
 
+    def update_single_entry(self, csv_data, entry_key, updated_entry):
+        """Update a single entry in the CSV file without rewriting the entire file"""
+        try:
+            # Get the fieldnames from the first entry or use default ones
+            if csv_data:
+                first_key = next(iter(csv_data))
+                fieldnames = csv_data[first_key].keys()
+            else:
+                fieldnames = ["id", "date", "location", "length", "filelocation", "keywords"]
+            
+            # Create a temporary file
+            temp_file = self.csv_file + '.temp'
+            
+            # Write all data including the updated entry to the temp file
+            with open(temp_file, 'w', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for key, row in csv_data.items():
+                    if key == entry_key:
+                        writer.writerow(updated_entry)
+                    else:
+                        writer.writerow(row)
+            
+            # Replace the original file with the temp file
+            os.replace(temp_file, self.csv_file)
+            
+            logger.info(f"Successfully updated entry in CSV file")
+            return True
+        except Exception as e:
+            logger.error(f"Error updating entry in CSV file: {e}")
+            return False
+
     def rename_clips(self):
         """Update CSV file with keywords for clips that don't have them yet"""
         logger.info(f"Looking for video clips in {self.clips_folder}")
@@ -212,15 +244,13 @@ class ClipRenamer:
         
         logger.info(f"Found {len(clip_files)} clips to check for keywords")
         
-        # Track if any changes were made
-        changes_made = False
-        
         for clip_file in clip_files:
             # Full path to the clip
             clip_path = os.path.join(self.clips_folder, clip_file)
             
             # Check if this clip is in the CSV
             csv_entry = None
+            entry_key = None
             for file_path, entry in csv_data.items():
                 # Normalize paths for comparison
                 norm_file_path = file_path.replace('/', '\\')
@@ -228,6 +258,7 @@ class ClipRenamer:
                 
                 if norm_file_path.lower() == norm_clip_path.lower():
                     csv_entry = entry
+                    entry_key = file_path
                     break
             
             # If clip not found in CSV, log and continue
@@ -248,19 +279,19 @@ class ClipRenamer:
                     
                     # Update the CSV entry with keywords
                     csv_entry['keywords'] = content_description
-                    changes_made = True
-                    logger.info(f"Generated keywords for {clip_file}: {content_description}")
+                    
+                    # Write this single update to the CSV file immediately
+                    if self.update_single_entry(csv_data, entry_key, csv_entry):
+                        logger.info(f"Immediately wrote keywords for {clip_file}: {content_description}")
+                    else:
+                        logger.error(f"Failed to write keywords for {clip_file}")
+                        
+                    # Update the in-memory CSV data for future operations
+                    csv_data[entry_key] = csv_entry
                 except Exception as e:
                     logger.error(f"Error generating keywords for {clip_file}: {e}")
         
-        # Save changes to CSV if any were made
-        if changes_made:
-            if self.write_csv_data(csv_data):
-                logger.info("CSV file updated with keywords")
-            else:
-                logger.error("Failed to update CSV file")
-        else:
-            logger.info("No changes needed, all clips already have keywords")
+        logger.info("All clips have been processed individually")
 
 def main():
     renamer = ClipRenamer()
