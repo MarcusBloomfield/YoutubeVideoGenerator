@@ -38,6 +38,28 @@ Research Content:
 {combined_research}
 '''
 
+RESEARCH_EXPANSION_PROMPT = '''
+Please analyze the following existing research and new information about {topic}.
+Combine them into a comprehensive, well-organized research document.
+
+Requirements:
+- Remove redundant information
+- Ensure content flows logically
+- Maintain the same format but improve organization
+- Create a cohesive narrative
+- Preserve all unique information
+- Enhance clarity and readability
+
+Existing Research:
+{existing_research}
+
+New Information:
+{new_research}
+
+Please provide the expanded research document, maintaining the same format but with improved organization
+and no redundant information.
+'''
+
 # WorldWar2VideoTranscriptGenerator.py Prompts
 TRANSCRIPT_GENERATION_PROMPT = '''
 Create a detailed historical transcript for a YouTube video about {topic} during World War II.
@@ -116,16 +138,19 @@ Transcript:
 '''
 
 EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT = '''
-Rewrite and expand the following historical transcript to create a more detailed and engaging narrative.
+Expand the following transcript to create a more detailed and engaging narrative.
+IMPORTANT: You MUST keep ALL existing content and add new content. Do not remove or summarize any existing text.
 
 Requirements:
-- Add approximately {words_needed} more words
+- Keep ALL existing content exactly as is
+- Add {words_needed} new words MINIMUM
 - Enhancements:
   * Enrich existing paragraphs with specific details
   * Highlight battles and conflicts
   * Add relevant historical context
   * Include personal stories and perspectives
-  * Ensure smooth transitions
+  * Add new paragraphs with additional information
+  * Ensure smooth transitions between new and existing content
 - Format: Single coherent document
 - Focus:
   * Historical accuracy
@@ -135,34 +160,37 @@ Requirements:
 - Return as blocks of text for reading aloud
 - Quality over quantity - focus on detail and engagement
 
-Transcript:
+Current Transcript (DO NOT REMOVE ANY OF THIS):
 {current_transcript}
 
-Research Materials:
+Research Content (Use this to add new information):
 {research_content}
-
-Additional Requirements:
-- Incorporate relevant facts and details
-- Include specific names, dates, and events
-- Add descriptive details from research
 '''
 
 # GenerateScenes.py Prompts
 CLIP_MATCHING_PROMPT = '''
-Match video clips to an audio transcript for a documentary scene.
-
-Requirements:
-- Match clips to transcript content
-- Total duration close to {transcript_length} seconds
-- Return as JSON array of clip IDs
-
-Transcript:
-{transcript_content}
+Match video clips to an audio transcript for {transcript_content}.
 
 Available Clips (ID, keywords, length in seconds):
-{clips_list}
+Look in here for clips: {clips_list}
 
-Format:
+Clip Requirements:
+- only use clips that are relevant to the transcript
+- only use clips that best represent the context of the transcript
+- only use clips matching places, geographics, structures, events, people
+- use clips with action in them only 
+- do not use clips with text in them
+- do not use clips with Sign,Handwriting,Paper,Black,Darkness,Empty,Blank,Unlit,Void,Shadow,Night,Absence,Nothingness
+- Match clips to transcript content
+- do not use abstract clips
+- do not use abstract themes and concepts
+- use clips that are more specific and detailed
+- Total duration close to {transcript_length} seconds
+- Return as JSON array of clip IDs
+- Prefer shorter clips
+
+ONLY RETURN THE JSON ARRAY OF CLIP IDs
+return Format Json:
 ["clip-id-1", "clip-id-2", "clip-id-3"]
 '''
 
@@ -181,6 +209,82 @@ Requirements:
 - Focus on content that provides additional context, details, or insights
 - Exclude irrelevant or redundant information
 - Format as a single block of text
-- Maximum 3000 words total
+- Maximum 1000 words total
 - Maintain original formatting and structure
+'''
+
+# Expansion Idea Prompt
+EXPANSION_IDEA_PROMPT = '''
+Based on the following transcript, identify the most interesting aspect or what you feel should be expanded with more details.
+- Make sure it is not already expanded in the transcript
+- DO NOT suggest any of these previously expanded ideas: {previous_ideas}
+- Empasize strategic and tactical aspects
+- Empasize conflicts and battles
+- Do not be too sad or dark
+- strategic and tactical aspects
+- personal stories and perspectives
+- historical context
+- vivid imagery
+- detailed descriptions
+- specific names, dates, and events
+- try your best to not reduce the word count
+Return only the specific aspect/idea to expand, no additional text or formatting.
+
+Transcript:
+{transcript}
+'''
+
+# TranscriptPurifier.py Prompts
+TRANSCRIPT_PURIFIER_PROMPT = '''Maintain exact word count if possible.
+Preserve all technical terms, names, and specific details exactly as they appear.
+Only make minimal changes needed for clarity, keeping the exact same meaning and all content intact.
+Return the complete transcript with minimal edits, maintaining all original information.
+
+Requirements:
+- Style: War report format
+- Structure:
+  * Engaging historical context introduction
+  * Chronological coverage of key events
+  * Military strategies and tactical decisions
+  * Personal stories from soldiers
+  * Impact and significance analysis
+- Format: Single cohesive block of text
+- Tone: Engaging and educational
+- Content:
+  * Specific dates and locations
+  * Key figures
+  * Accurate historical details
+- No section headers or formatting
+- Optimized for text-to-speech narration
+
+We need an introduction to the topic.
+We need clear chapters of the text logically seperated and leading to each other.
+We need a conclusion to the topic.
+
+NO OTHER FORMATING
+NEEDS TO BE IN A BLOCK OF TEXT SEPERATED BY PARAGRAPHS.
+
+{content}
 ''' 
+
+SCENE_GENERATION_PROMPT = """
+I need to match video clips to an audio transcript for a documentary scene. 
+The transcript is about: "{transcript_content[:500]}..."
+
+Keywords from transcript: {transcript_keywords}
+
+I need to select clips that visually match this content with a total duration close to {transcript_length} seconds.
+Available clips (ID, keywords, length in seconds):
+{clips_list[:30]}  # Limiting to first 30 clips to avoid token limits
+
+Select the best matching clips that total approximately {transcript_length} seconds.
+Return a JSON array with just the clip IDs in your preferred order, like:
+["clip-id-1", "clip-id-2", "clip-id-3"]
+"""
+SET_CLIP_CSV_KEYWORDS_PROMPT = """
+    Based on the following image, select 5-10 relevant keywords or key phrases from the list of available keywords that best represent what is in the image.
+    
+    Available keywords to choose from:
+    {', '.join(available_keywords)}
+    
+    """

@@ -3,15 +3,16 @@ import csv
 import re
 
 def parse_filename(filename):
-    # Regex pattern to extract info from filename format: ORDER_ID_DATE_LOCATION.txt
-    pattern = r'(\d+)_([a-f0-9-]+)_(\d+)_([A-Za-z_]+)\.txt'
+    # Update regex to match format with multiple underscores in location: ORDER_ID_LOCATION_PART1_LOCATION_PART2_transcript.txt
+    pattern = r'(\d+)_([a-f0-9-]+)_(.+)_transcript\.txt'
     match = re.match(pattern, filename)
     
     if match:
         order = match.group(1)
         transcript_id = match.group(2)
-        date = match.group(3)
-        location = match.group(4)
+        location = match.group(3)
+        # Since there is no date in the filename, use a default or current date
+        date = "20230101"  # Default date as placeholder
         return order, transcript_id, date, location
     return None, None, None, None
 

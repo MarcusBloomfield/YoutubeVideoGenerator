@@ -1,9 +1,11 @@
 import os
+import sys
 import argparse
 import datetime
 import requests
 from OpenAiQuerying import query_openai, check_api_key
-from prompts import TRANSCRIPT_GENERATION_PROMPT, TRANSCRIPT_WITH_RESEARCH_PROMPT
+from Prompts import TRANSCRIPT_GENERATION_PROMPT, TRANSCRIPT_WITH_RESEARCH_PROMPT
+from Models import ModelCategories
 
 def create_transcript_folder():
     """Create a Transcript folder if it doesn't exist"""
@@ -55,68 +57,62 @@ def get_research_files(topic):
     
     return research_content
 
-def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
-    """Generate a transcript for a YouTube video about a World War 2 battle"""
+def generate_transcript(topic="History", model=ModelCategories.getWriteTranscriptModel()):
+    """
+    Generate a transcript for a World War 2 video
     
-    # Check if API key is available
-    api_key = check_api_key()
-    if not api_key:
-        print("Please set your OPENAI_API_KEY in environment variables or .env file")
-        return
-    
-    print(f"Generating transcript for: {topic}")
-    
-    # Get research content from relevant files
-    research_content = get_research_files(topic)
-    
-    # Create a detailed prompt for the AI
-    if not research_content:
+    Args:
+        topic: The specific topic to focus on
+        model: The OpenAI model to use
+        
+    Returns:
+        Path to the generated transcript file
+    """
+    try:
+        # Create prompt for transcript generation
         prompt = TRANSCRIPT_GENERATION_PROMPT.format(topic=topic)
-    else:
-        prompt = TRANSCRIPT_WITH_RESEARCH_PROMPT.format(
-            topic=topic,
-            research_content=research_content
-        )
-    
-    # Query OpenAI for the transcript
-    transcript = query_openai(prompt, model=model, api_key=api_key)
-    
-    if transcript:
-        # Create a filename with date and battle name
-        timestamp = datetime.datetime.now().strftime("%Y%m%d")
-        safe_battle_name = topic.replace(" ", "_").replace("/", "_")
-        filename = f"Transcript/{timestamp}_{safe_battle_name}.txt"
         
-        # Save the transcript to a file
-        with open(filename, "w", encoding="utf-8") as f:
+        # Query OpenAI to generate the transcript
+        transcript = query_openai(prompt, model=model)
+        
+        if not transcript:
+            print("Error: No response from OpenAI API")
+            return None
+            
+        # Create output directory if it doesn't exist
+        output_dir = "Transcripts"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generate output filename
+        filename = f"ww2_{topic.lower().replace(' ', '_')}_transcript.txt"
+        transcript_path = os.path.join(output_dir, filename)
+        
+        # Save the generated transcript
+        with open(transcript_path, 'w', encoding='utf-8') as f:
             f.write(transcript)
+            
+        print(f"Generated transcript saved to: {transcript_path}")
+        return transcript_path
         
-        print(f"[OK] Transcript saved to: {filename}")
-        return filename
-    else:
-        print("[ERROR] Failed to generate transcript")
+    except Exception as e:
+        print(f"Error generating transcript: {e}")
         return None
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate World War 2 battle transcripts for YouTube videos")
-    parser.add_argument("--topic", type=str, help="Name of the World War 2 battle or topic")
-    parser.add_argument("--model", type=str, default="gpt-4o", help="OpenAI model to use")
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Generate a World War 2 video transcript")
+    parser.add_argument("--topic", type=str, default="History", help="Specific topic to focus on")
+    parser.add_argument("--model", type=str, default=ModelCategories.getDefaultModel(), help="OpenAI model to use")
     
     args = parser.parse_args()
     
-    # Create transcript folder
-    create_transcript_folder()
-    
-    # Get battle name from command line or prompt
-    topic = args.topic
-    if not topic:
-        topic = input("Enter the name of the World War 2 battle or topic: ")
-    
-    # Generate and save the transcript
-    transcript_file = generate_transcript(topic, model=args.model)
+    # Generate the transcript
+    transcript_file = generate_transcript(args.topic, args.model)
     
     if transcript_file:
-        print(f"Transcript generation complete. File saved at: {transcript_file}")
+        print(f"Successfully generated transcript: {transcript_file}")
+    else:
+        print("Failed to generate transcript")
 
 if __name__ == "__main__":
     main()

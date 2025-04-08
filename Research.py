@@ -5,9 +5,10 @@ import re
 import datetime
 import argparse
 from urllib.parse import urlparse
-from OpenAiQuerying import query_openai
+from OpenAiQuerying import query_openai, check_api_key
 import time
-from prompts import RESEARCH_EXTRACT_INFO_PROMPT, RESEARCH_SUMMARY_PROMPT
+from Prompts import RESEARCH_EXTRACT_INFO_PROMPT, RESEARCH_SUMMARY_PROMPT, RESEARCH_EXPANSION_PROMPT
+from Models import ModelCategories
 
 def create_research_folder():
     """Create a Research folder if it doesn't exist"""
@@ -83,7 +84,7 @@ def extract_relevant_info(content, topic, url, existingResearch):
         existingResearch=existingResearch
     )
     
-    response = query_openai(prompt)
+    response = query_openai(prompt, model="gpt-4o")
     
     if response and "NO_RELEVANT_INFO" not in response:
         return f"Source: {url}\n\n{response}\n\n"
@@ -138,49 +139,95 @@ def research_topic(urls, topic):
         if is_update:
             return research_file
     
-    # Combine existing and new research
-    if is_update:
-        # Check if there's a SUMMARY section in the existing research
-        summary_index = existing_research.find("\nSUMMARY\n")
-        
-        if summary_index != -1:
-            # Remove the old summary
-            existing_research = existing_research[:summary_index].strip()
-        
-        # Add update timestamp and new research
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        combined_research = existing_research.strip() + "\n\n"
-        combined_research += f"UPDATE ({timestamp})\n"
-        combined_research += "=" * 50 + "\n\n"
-        combined_research += new_research.strip()
-    else:
-        # Create new research document
-        combined_research = f"Research on: {topic}\n"
-        combined_research += "=" * 50 + "\n\n"
-        combined_research += new_research.strip()
+    # Create expanded research using the prompt
+    expansion_prompt = RESEARCH_EXPANSION_PROMPT.format(
+        topic=topic,
+        existing_research=existing_research,
+        new_research=new_research
+    )
+    
+    # Get the expanded research from OpenAI
+    expanded_research = query_openai(expansion_prompt, model="gpt-4o")
     
     # Add a summary at the end using OpenAI
     summary_prompt = RESEARCH_SUMMARY_PROMPT.format(
         topic=topic,
-        combined_research=combined_research
+        combined_research=expanded_research
     )
     
-    summary = query_openai(summary_prompt)
+    summary = query_openai(summary_prompt, model="gpt-4o")
     
-    combined_research += "\n\nSUMMARY\n"
-    combined_research += "=" * 50 + "\n"
-    combined_research += summary
+    # Add timestamp and format the final research
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    final_research = f"Research on: {topic}\n"
+    final_research += f"Last Updated: {timestamp}\n"
+    final_research += "=" * 50 + "\n\n"
+    final_research += expanded_research.strip()
+    final_research += "\n\nSUMMARY\n"
+    final_research += "=" * 50 + "\n"
+    final_research += summary
     
     # Save research to file
     with open(research_file, 'w', encoding='utf-8') as f:
-        f.write(combined_research)
+        f.write(final_research)
     
     if is_update:
-        print(f"Research file updated at {research_file}")
+        print(f"Research file expanded and updated at {research_file}")
     else:
         print(f"New research saved to {research_file}")
     
     return research_file
+
+def process_research_file(file_path):
+    """
+    Process a single research file using OpenAI to expand and summarize its content
+    
+    Args:
+        file_path: Path to the research file
+        
+    Returns:
+        A tuple of (expanded_content, summary)
+    """
+    try:
+        # Read the original content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            original_content = f.read().strip()
+        
+        # Create prompt for expanding the research
+        prompt = RESEARCH_PROMPT.format(content=original_content)
+        
+        # Query OpenAI to expand the research
+        response = query_openai(prompt, model=ModelCategories.getResearchModel())
+        
+        if not response:
+            print(f"Error: No response from OpenAI API for {file_path}")
+            return None, None
+            
+        # Create prompt for expanding the expanded content
+        expansion_prompt = EXPAND_RESEARCH_PROMPT.format(content=response)
+        
+        # Query OpenAI to further expand the content
+        expanded_research = query_openai(expansion_prompt, model=ModelCategories.getResearchModel())
+        
+        if not expanded_research:
+            print(f"Error: No response from OpenAI API for expanding {file_path}")
+            return None, None
+            
+        # Create prompt for summarizing the expanded content
+        summary_prompt = SUMMARIZE_RESEARCH_PROMPT.format(content=expanded_research)
+        
+        # Query OpenAI to summarize the expanded content
+        summary = query_openai(summary_prompt, model=ModelCategories.getResearchModel())
+        
+        if not summary:
+            print(f"Error: No response from OpenAI API for summarizing {file_path}")
+            return None, None
+            
+        return expanded_research, summary
+        
+    except Exception as e:
+        print(f"Error processing research file {file_path}: {e}")
+        return None, None
 
 def main():
     """Main function to run the research tool using command line arguments"""

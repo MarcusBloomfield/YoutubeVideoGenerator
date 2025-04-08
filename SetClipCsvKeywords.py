@@ -7,6 +7,8 @@ import csv
 from PIL import Image
 import tempfile
 from OpenAiQuerying import query_openai, check_api_key
+from Prompts import SET_CLIP_CSV_KEYWORDS_PROMPT
+from Models import ModelCategories
 
 # Configure logging with more verbose output
 logging.basicConfig(
@@ -43,7 +45,7 @@ class ClipRenamer:
         
         try:
             # Query OpenAI with the frame
-            prompt = "Describe what's happening in this video frame. Return only the description, no other text. No other formatting. Example: A truck driving down a road."
+            prompt = "Describe what's happening in this video frame and identify any ethnic groups, people, military factions, places, structures, events, etc. Return only the description, no other text. No other formatting. Example: A truck driving down a road, on a gloomy day, sorrounded by rocks and trees."
             response = query_openai(
                 prompt=prompt,
                 model="gpt-4o",
@@ -292,6 +294,62 @@ class ClipRenamer:
                     logger.error(f"Error generating keywords for {clip_file}: {e}")
         
         logger.info("All clips have been processed individually")
+
+def process_clip_csv(csv_path, output_path=None):
+    """
+    Process a CSV file containing clip information and generate keywords
+    
+    Args:
+        csv_path: Path to the input CSV file
+        output_path: Path to save the output CSV file (optional)
+        
+    Returns:
+        Path to the output CSV file
+    """
+    try:
+        # Read the CSV file
+        clips = []
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                clips.append(row)
+        
+        # Process each clip
+        for clip in clips:
+            # Create prompt for keyword generation
+            prompt = SET_CLIP_CSV_KEYWORDS_PROMPT.format(
+                title=clip['title'],
+                description=clip['description']
+            )
+            
+            # Query OpenAI to generate keywords
+            response = query_openai(prompt, model=ModelCategories.getDefaultModel())
+            
+            if response:
+                # Update the clip with generated keywords
+                clip['keywords'] = response.strip()
+                print(f"Generated keywords for: {clip['title']}")
+            else:
+                print(f"Error generating keywords for: {clip['title']}")
+                clip['keywords'] = ""
+        
+        # Determine output path
+        if not output_path:
+            base_name = os.path.splitext(csv_path)[0]
+            output_path = f"{base_name}_with_keywords.csv"
+        
+        # Write the updated CSV file
+        with open(output_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=clips[0].keys())
+            writer.writeheader()
+            writer.writerows(clips)
+            
+        print(f"Updated CSV saved to: {output_path}")
+        return output_path
+        
+    except Exception as e:
+        print(f"Error processing CSV file: {e}")
+        return None
 
 def main():
     renamer = ClipRenamer()

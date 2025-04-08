@@ -2,7 +2,8 @@ import os
 import sys
 import time
 from OpenAiQuerying import query_openai, check_api_key
-from prompts import EXPAND_TRANSCRIPT_PROMPT, EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT, RESEARCH_MATCHING_PROMPT
+from Prompts import EXPAND_TRANSCRIPT_PROMPT, EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT, RESEARCH_MATCHING_PROMPT, EXPANSION_IDEA_PROMPT
+from Models import ModelCategories
 
 def count_words(text):
     """Count the number of words in a text"""
@@ -41,30 +42,32 @@ def find_relevant_research(transcript_text, research_dir="Research"):
         file_path = os.path.join(research_dir, filename)
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-            
             # Create prompt for this specific research file
+            print(f"Processing research file: {filename}")
             prompt = RESEARCH_MATCHING_PROMPT.format(
                 transcript=transcript_text,
-                research_materials=f"--- RESEARCH: {filename} ---\n{content}"
+                research_materials=f"--- RESEARCH: {filename} ---\n{content}",
             )
             
             try:
                 # Query OpenAI for relevant content from this file
-                file_relevant_content = query_openai(prompt, model="gpt-4o-mini")
+                print(f"Querying OpenAI for relevant content from {filename}")
+                file_relevant_content = query_openai(prompt, model=ModelCategories.getDefaultModel())
                 if file_relevant_content:
                     relevant_research.append(f"--- RESEARCH: {filename} ---\n{file_relevant_content}")
                     print(f"Found relevant content in {filename}")
+                    print(f"Content: {file_relevant_content[:200]}")
             except Exception as e:
                 print(f"Error processing research file {filename}: {e}")
     
     if relevant_research:
-        print("Successfully found relevant research using semantic matching")
+        print(f"Successfully found relevant research in {len(relevant_research)} files using semantic matching")
         return "\n\n".join(relevant_research)
     else:
         print("No relevant research found in any files")
         return ""
 
-def expand_transcript(transcript_path, target_loops=5, model="gpt-4o", words_needed=1000):
+def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.getResearchModel(), words_needed=10000):
     """
     Expand a transcript through a specified number of expansion loops using research materials
     
@@ -72,6 +75,7 @@ def expand_transcript(transcript_path, target_loops=5, model="gpt-4o", words_nee
         transcript_path: Path to the transcript file
         target_loops: Number of expansion loops to perform
         model: OpenAI model to use
+        words_needed: Target number of words for expansion
     
     Returns:
         The expanded transcript text
@@ -87,19 +91,46 @@ def expand_transcript(transcript_path, target_loops=5, model="gpt-4o", words_nee
     current_word_count = count_words(current_transcript)
     print(f"Original word count: {current_word_count}")
     
+    # Track previous expansion ideas to avoid duplicates
+    previous_ideas = []
+    
     # Perform the specified number of expansion loops
     for expansion_round in range(1, target_loops + 1):
         print(f"Starting expansion round {expansion_round} of {target_loops}")
 
-        if expansion_round == 1 or expansion_round % 5 == 0:
-            # Find relevant research materials
-            research_content = find_relevant_research(current_transcript)
-    
-            if not research_content:
-                print("Error: No relevant research found. Cannot expand transcript without research materials.")
+        # First, get an idea of what to expand from the current transcript
+        idea_prompt = EXPANSION_IDEA_PROMPT.format(
+            transcript=current_transcript,
+            previous_ideas="\n- ".join(previous_ideas) if previous_ideas else "None yet"
+        )
+        
+        try:
+            # Query OpenAI to find what to expand
+            print("Getting expansion idea...")
+            expansion_idea = query_openai(idea_prompt, model=ModelCategories.getDefaultModel())
+            
+            if expansion_idea:
+                print(f"Found aspect to expand: {expansion_idea}")
+                # Track this idea to avoid duplicates in future rounds
+                previous_ideas.append(expansion_idea)
+                
+                # Now find research specifically about this expansion idea
+                research_content = find_relevant_research(expansion_idea)
+                
+                if not research_content:
+                    print("Error: No relevant research found for the expansion idea. Cannot expand transcript.")
+                    return current_transcript
+            else:
+                print("Error: Could not identify aspect to expand")
                 return current_transcript
+                
+        except Exception as e:
+            print(f"Error finding expansion idea: {e}")
+            return current_transcript
+        
         # Craft prompt for expansion that includes research materials
         prompt = EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT.format(
+            idea_prompt=idea_prompt,
             words_needed=words_needed,  # Fixed word target per expansion
             current_transcript=current_transcript,
             research_content=research_content
@@ -107,7 +138,7 @@ def expand_transcript(transcript_path, target_loops=5, model="gpt-4o", words_nee
         
         try:
             # Query OpenAI to rewrite and expand the text
-            expanded_transcript = query_openai(prompt, model=model)
+            expanded_transcript = query_openai(prompt, model=ModelCategories.getExpandTranscriptModel())
             
             if expanded_transcript:
                 # Replace current transcript with the expanded version
@@ -133,7 +164,6 @@ def expand_transcript(transcript_path, target_loops=5, model="gpt-4o", words_nee
         # Pause between requests to respect rate limits
         if expansion_round < target_loops:
             print("Pausing before next expansion...")
-            time.sleep(10)  # 10 second pause
     
     print(f"Final word count: {current_word_count}")
     return current_transcript
