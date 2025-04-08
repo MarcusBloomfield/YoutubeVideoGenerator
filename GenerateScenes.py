@@ -5,6 +5,7 @@ import pandas as pd
 from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips
 from OpenAiQuerying import query_openai, check_api_key
 import random
+from prompts import CLIP_MATCHING_PROMPT
 
 def ensure_dir(directory):
     """Ensure directory exists, create if it doesn't"""
@@ -17,10 +18,14 @@ def generate_scenes():
     output_dir = "Scenes"
     ensure_dir(output_dir)
     
+    # Configuration variables
+    additional_time_buffer = 3  # Additional seconds to add beyond transcript length
+    
     # Check for API key
     api_key = check_api_key()
     if not api_key:
-        print("WARNING: OpenAI API key not found. Will fall back to basic matching.")
+        print("Error: OpenAI API key not found. Cannot proceed with scene generation.")
+        return
     
     # Read CSV data
     transcripts_df = pd.read_csv("transcripts_data.csv")
@@ -35,7 +40,6 @@ def generate_scenes():
         transcript_length = float(transcript['length'])
         audio_file = transcript['audio_file']
         transcript_file = transcript['transcript_file']
-        transcript_keywords = transcript['keywords']
         
         # Extract order number from audio filename (format: "001_transcript-id...")
         order_number = "000"
@@ -58,96 +62,83 @@ def generate_scenes():
                     transcript_content = f.read()
             except Exception as e:
                 print(f"Error reading transcript file: {e}")
+                continue
+        else:
+            print(f"Transcript file not found: {transcript_file}")
+            continue
         
         # Find matching clips using OpenAI to find semantic matches
         selected_clips = []
         current_length = 0
         remaining_clips = clips_df[~clips_df['id'].isin(used_clip_ids)].copy()
         
-        if api_key and transcript_content:
-            # Build a list of available clips with their keywords for the AI to choose from
-            clips_list = []
-            for _, clip in remaining_clips.iterrows():
-                clips_list.append({
-                    "id": clip['id'],
-                    "keywords": clip['keywords'],
-                    "length": float(clip['length'])
-                })
-            
-            # Create prompt for OpenAI to match clips to transcript
-            prompt = f"""
-I need to match video clips to an audio transcript for a documentary scene. 
-The transcript is about: "{transcript_content[:500]}..."
-
-Keywords from transcript: {transcript_keywords}
-
-I need to select clips that visually match this content with a total duration close to {transcript_length} seconds.
-Available clips (ID, keywords, length in seconds):
-{clips_list[:30]}  # Limiting to first 30 clips to avoid token limits
-
-Select the best matching clips that total approximately {transcript_length} seconds.
-Return a JSON array with just the clip IDs in your preferred order, like:
-["clip-id-1", "clip-id-2", "clip-id-3"]
-"""
-            try:
-                # Query OpenAI for clip selection
-                response = query_openai(prompt, model="gpt-3.5-turbo")
-                
-                # Parse response to get clip IDs 
-                import re
-                import json
-                # Find anything that looks like a JSON array
-                match = re.search(r'\[.*?\]', response, re.DOTALL)
-                if match:
-                    try:
-                        selected_ids = json.loads(match.group(0))
-                        # Get the actual clips from our dataframe
-                        for clip_id in selected_ids:
-                            if clip_id in remaining_clips['id'].values and clip_id not in used_clip_ids:
-                                clip = remaining_clips[remaining_clips['id'] == clip_id].iloc[0]
-                                selected_clips.append(clip)
-                                used_clip_ids.add(clip_id)
-                                current_length += float(clip['length'])
-                                # If we have enough clips, break
-                                if current_length >= transcript_length * 1.25 + random.uniform(0, .50):
-                                    break
-                    except json.JSONDecodeError:
-                        print("Could not parse AI response as JSON, falling back to basic matching")
-            except Exception as e:
-                print(f"Error using OpenAI for clip matching: {e}")
+        # Build a list of available clips with their keywords for the AI to choose from
+        clips_list = []
+        for _, clip in remaining_clips.iterrows():
+            clips_list.append({
+                "id": clip['id'],
+                "keywords": clip['keywords'],
+                "length": float(clip['length'])
+            })
         
-        # If we don't have enough clips yet (from AI or if AI failed), use basic matching
-        if current_length < transcript_length * 0.8:
-            print("Using basic matching to find additional clips")
+        # Create prompt for OpenAI to match clips to transcript
+        prompt = CLIP_MATCHING_PROMPT.format(
+            transcript_content=transcript_content,
+            transcript_length=transcript_length,
+            clips_list=clips_list[:30]  # Limiting to first 30 clips to avoid token limits
+        )
+        
+        try:
+            # Query OpenAI for clip selection
+            response = query_openai(prompt, model="gpt-3.5-turbo")
             
-            # Sort clips to ensure consistent selection
-            sorted_clips = remaining_clips.sort_values(by='id')
+            # Parse response to get clip IDs 
+            import re
+            import json
+            # Find anything that looks like a JSON array
+            match = re.search(r'\[.*?\]', response, re.DOTALL)
+            if match:
+                try:
+                    selected_ids = json.loads(match.group(0))
+                    # Get the actual clips from our dataframe
+                    for clip_id in selected_ids:
+                        if clip_id in remaining_clips['id'].values and clip_id not in used_clip_ids:
+                            clip = remaining_clips[remaining_clips['id'] == clip_id].iloc[0]
+                            selected_clips.append(clip)
+                            used_clip_ids.add(clip_id)
+                            current_length += float(clip['length'])
+                            # Continue adding clips until we have enough
+                            # Always ensure clips are longer than transcript length with a buffer
+                            if current_length >= transcript_length + additional_time_buffer:
+                                break
+                except json.JSONDecodeError:
+                    print("Could not parse AI response as JSON")
+        except Exception as e:
+            print(f"Error using OpenAI for clip matching: {e}")
+        
+        # If selected clips aren't long enough, try to add more from remaining clips
+        if current_length <= transcript_length:
+            print(f"Warning: Selected clips ({current_length}s) are not longer than transcript ({transcript_length}s). Adding more clips...")
             
-            for _, clip in sorted_clips.iterrows():
-                # Skip clips that have already been used
-                if clip['id'] in used_clip_ids:
-                    continue
-                    
-                # Add clip length check
-                clip_length = float(clip['length'])
-                
-                # Skip clips that would exceed the target length
-                if current_length + clip_length > transcript_length:
-                    continue
-                    
-                selected_clips.append(clip)
-                used_clip_ids.add(clip['id'])  # Mark this clip as used
-                current_length += clip_length
-                
-                # If we have enough clips, break
-                if current_length >= transcript_length * 0.95:  # Allow slight underrun
-                    break
+            # Sort remaining clips by length (shortest first) to find clips that will fit
+            sorted_remaining = remaining_clips[~remaining_clips['id'].isin([clip['id'] for clip in selected_clips])].sort_values('length')
+            
+            for _, clip in sorted_remaining.iterrows():
+                if clip['id'] not in used_clip_ids:
+                    selected_clips.append(clip)
+                    used_clip_ids.add(clip['id'])
+                    current_length += float(clip['length'])
+                    if current_length > transcript_length + additional_time_buffer:
+                        break
         
         if not selected_clips:
-            print(f"No suitable unused clips found for transcript {transcript_id}")
+            print(f"No suitable clips found for transcript {transcript_id}")
             continue
             
-        print(f"Selected {len(selected_clips)} clips with total length {current_length}s")
+        if current_length <= transcript_length:
+            print(f"Warning: Could not find enough clips to exceed transcript length. Using available clips anyway.")
+            
+        print(f"Selected {len(selected_clips)} clips with total length {current_length}s for transcript length {transcript_length}s")
         
         # Combine clips with audio
         output_file = os.path.join(output_dir, f"{order_number}_scene_{transcript_id}.mp4")

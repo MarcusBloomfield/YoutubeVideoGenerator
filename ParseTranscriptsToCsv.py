@@ -49,7 +49,7 @@ def main():
             for i in range(1, len(csv_data)):
                 csv_data[i].append("")
     else:
-        csv_data = [["order", "id", "date", "location", "keywords", "length", "audio_file", "transcript_file"]]
+        csv_data = [["order", "id", "date", "location", "length", "audio_file", "transcript_file"]]
     
     # Track new transcripts added
     new_transcripts_count = 0
@@ -74,9 +74,9 @@ def main():
                 except:
                     formatted_date = date
                 
-                # Add to CSV data with empty length and keywords fields that can be filled later
+                # Add to CSV data with empty length field that can be filled later
                 # Include the transcript file path
-                csv_data.append([order, transcript_id, formatted_date, location, "", "", "", file_path])
+                csv_data.append([order, transcript_id, formatted_date, location, "", "", file_path])
                 new_transcripts_count += 1
             else:
                 print(f"Warning: Could not parse filename: {filename}")

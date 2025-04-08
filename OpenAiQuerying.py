@@ -3,6 +3,7 @@ import argparse
 import base64
 from dotenv import load_dotenv
 from openai import OpenAI
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -92,7 +93,8 @@ def query_openai(prompt, model="gpt-4o-mini", api_key=None, image_path=None):
             messages=messages,
             temperature=0.7
         )
-        
+
+        time.sleep(1)
         # Return the response text
         return response.choices[0].message.content.strip()
     

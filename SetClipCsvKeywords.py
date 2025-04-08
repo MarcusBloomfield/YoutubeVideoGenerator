@@ -43,7 +43,7 @@ class ClipRenamer:
         
         try:
             # Query OpenAI with the frame
-            prompt = "Describe what's happening in this video frame in 10 or more keywords. Focus only on what is in the scene. Return only the keywords, no other text. No other formatting. Example: Truck, Soliders, Road, Plane, Explosion"
+            prompt = "Describe what's happening in this video frame. Return only the description, no other text. No other formatting. Example: A truck driving down a road."
             response = query_openai(
                 prompt=prompt,
                 model="gpt-4o",

@@ -6,24 +6,25 @@ import TranscriptSeperator
 import WorldWar2VideoTranscriptGenerator
 import ParseTranscriptsToCsv
 import MatchAudioToTranscriptInCsv
-import SetTranscriptCsvKeywords
 import SetTranscriptCsvLength
 import GenerateScenes
 import Combine
-
+import ExpandTranscript
+import Research
 
 def main():
     Mp4ClipsExtractor().main()
     ParseClipsToCsv().main()
     SetClipCsvKeywords().main()
 
+    Research().main()
     WorldWar2VideoTranscriptGenerator().main()
+    ExpandTranscript().main()
     TranscriptSeperator().main()
     CreateNarration().main()
 
     ParseTranscriptsToCsv().main()
     MatchAudioToTranscriptInCsv().main()
-    SetTranscriptCsvKeywords().main()
     SetTranscriptCsvLength().main()
 
     GenerateScenes().main()

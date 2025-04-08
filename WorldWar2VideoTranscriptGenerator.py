@@ -1,12 +1,59 @@
 import os
 import argparse
 import datetime
+import requests
 from OpenAiQuerying import query_openai, check_api_key
+from prompts import TRANSCRIPT_GENERATION_PROMPT, TRANSCRIPT_WITH_RESEARCH_PROMPT
 
 def create_transcript_folder():
     """Create a Transcript folder if it doesn't exist"""
     os.makedirs("Transcript", exist_ok=True)
     print("[OK] Transcript folder ready")
+
+def get_research_files(topic):
+    """Get content from relevant research files in the Research folder"""
+    research_content = ""
+    research_dir = "Research"
+    
+    # Check if Research directory exists
+    if not os.path.isdir(research_dir):
+        print("[INFO] No Research directory found")
+        return research_content
+    
+    # List all text files in the Research directory
+    research_files = [f for f in os.listdir(research_dir) if f.endswith(".txt")]
+    
+    if not research_files:
+        print("[INFO] No research files found in Research directory")
+        return research_content
+    
+    # Check for topic-specific research files first
+    topic_keywords = topic.lower().split()
+    relevant_files = []
+    
+    for file in research_files:
+        file_lower = file.lower()
+        # Check if any keyword from the topic is in the filename
+        if any(keyword in file_lower for keyword in topic_keywords):
+            relevant_files.append(file)
+    
+    # If no topic-specific files found, use all txt files
+    if not relevant_files:
+        print(f"[INFO] No topic-specific research files found for '{topic}', using all available research")
+        relevant_files = research_files
+    
+    # Read content from relevant files
+    for file in relevant_files:
+        file_path = os.path.join(research_dir, file)
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                research_content += f"\n\n--- Research from {file} ---\n\n{content}"
+                print(f"[OK] Added research content from: {file}")
+        except Exception as e:
+            print(f"[ERROR] Failed to read research file {file}: {e}")
+    
+    return research_content
 
 def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
     """Generate a transcript for a YouTube video about a World War 2 battle"""
@@ -19,26 +66,17 @@ def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
     
     print(f"Generating transcript for: {topic}")
     
+    # Get research content from relevant files
+    research_content = get_research_files(topic)
+    
     # Create a detailed prompt for the AI
-    prompt = f"""
-    Create a detailed historical transcript for a YouTube video about {topic} during World War II.
-    
-    The transcript should:
-    - Be in the style of a war report
-    - Begin with an engaging introduction about the historical context
-    - Cover key events in chronological order
-    - Explain military strategies and tactical decisions
-    - Include personal stories or accounts from soldiers involved
-    - Mention the impact and significance of this battle
-    - Do not include any other text than the transcript
-    - Do not Highlight the text with anything 
-    - Do not do [INTRO] or [CHRONOLOGY] or [TACTICS AND STRATEGIES] or [PERSONAL ACCOUNTS] or [IMPACT AND SIGNIFICANCE] or [CONCLUSION] type of patterns
-    
-    Format as a single cohesive block of text optimized for text-to-speech narration.
-    Use clear transitions between topics and maintain an engaging, educational tone.
-    Include specific dates, locations, key figures, and accurate historical details.
-    Aim for approximately 10,000 words of rich, detailed content.
-    """
+    if not research_content:
+        prompt = TRANSCRIPT_GENERATION_PROMPT.format(topic=topic)
+    else:
+        prompt = TRANSCRIPT_WITH_RESEARCH_PROMPT.format(
+            topic=topic,
+            research_content=research_content
+        )
     
     # Query OpenAI for the transcript
     transcript = query_openai(prompt, model=model, api_key=api_key)
@@ -62,7 +100,7 @@ def generate_transcript(topic="Iwo Jima", model="gpt-4o-mini"):
 def main():
     parser = argparse.ArgumentParser(description="Generate World War 2 battle transcripts for YouTube videos")
     parser.add_argument("--topic", type=str, help="Name of the World War 2 battle or topic")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="OpenAI model to use")
+    parser.add_argument("--model", type=str, default="gpt-4o", help="OpenAI model to use")
     
     args = parser.parse_args()
     
@@ -82,3 +120,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
