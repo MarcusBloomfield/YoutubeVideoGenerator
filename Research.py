@@ -178,57 +178,6 @@ def research_topic(urls, topic):
     
     return research_file
 
-def process_research_file(file_path):
-    """
-    Process a single research file using OpenAI to expand and summarize its content
-    
-    Args:
-        file_path: Path to the research file
-        
-    Returns:
-        A tuple of (expanded_content, summary)
-    """
-    try:
-        # Read the original content
-        with open(file_path, 'r', encoding='utf-8') as f:
-            original_content = f.read().strip()
-        
-        # Create prompt for expanding the research
-        prompt = RESEARCH_PROMPT.format(content=original_content)
-        
-        # Query OpenAI to expand the research
-        response = query_openai(prompt, model=ModelCategories.getResearchModel())
-        
-        if not response:
-            print(f"Error: No response from OpenAI API for {file_path}")
-            return None, None
-            
-        # Create prompt for expanding the expanded content
-        expansion_prompt = EXPAND_RESEARCH_PROMPT.format(content=response)
-        
-        # Query OpenAI to further expand the content
-        expanded_research = query_openai(expansion_prompt, model=ModelCategories.getResearchModel())
-        
-        if not expanded_research:
-            print(f"Error: No response from OpenAI API for expanding {file_path}")
-            return None, None
-            
-        # Create prompt for summarizing the expanded content
-        summary_prompt = SUMMARIZE_RESEARCH_PROMPT.format(content=expanded_research)
-        
-        # Query OpenAI to summarize the expanded content
-        summary = query_openai(summary_prompt, model=ModelCategories.getResearchModel())
-        
-        if not summary:
-            print(f"Error: No response from OpenAI API for summarizing {file_path}")
-            return None, None
-            
-        return expanded_research, summary
-        
-    except Exception as e:
-        print(f"Error processing research file {file_path}: {e}")
-        return None, None
-
 def main():
     """Main function to run the research tool using command line arguments"""
     # Create argument parser

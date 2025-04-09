@@ -67,7 +67,7 @@ def find_relevant_research(transcript_text, research_dir="Research"):
         print("No relevant research found in any files")
         return ""
 
-def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.getResearchModel(), words_needed=10000):
+def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.getResearchModel(), words_needed=1000):
     """
     Expand a transcript through a specified number of expansion loops using research materials
     
@@ -168,7 +168,7 @@ def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.get
     print(f"Final word count: {current_word_count}")
     return current_transcript
 
-def process_all_transcripts(transcript_dir="Transcript", target_loops=5, research_dir="Research"):
+def process_all_transcripts(transcript_dir="Transcript", target_loops=1, research_dir="Research"):
     """Process all transcript files in the given directory"""
     # Ensure API key is available
     api_key = check_api_key()
@@ -199,7 +199,7 @@ def process_all_transcripts(transcript_dir="Transcript", target_loops=5, researc
 if __name__ == "__main__":
     # Default directory and target loops
     transcript_dir = "Transcript"
-    target_loops = 5
+    target_loops = 1
     research_dir = "Research"
     
     # Allow command line override

@@ -138,7 +138,7 @@ Transcript:
 '''
 
 EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT = '''
-Expand the following transcript to create a more detailed and engaging narrative.
+Expand the following transcript with this idea {idea_prompt} to create a more detailed and engaging narrative.
 IMPORTANT: You MUST keep ALL existing content and add new content. Do not remove or summarize any existing text.
 
 Requirements:
@@ -196,42 +196,34 @@ return Format Json:
 
 # Research Matching Prompt
 RESEARCH_MATCHING_PROMPT = '''
-Analyze the following transcript and research materials to find the most relevant research content.
-
-Transcript:
-{transcript}
-
-Research Materials:
-{research_materials}
+Analyze the following transcript {transcript} and research materials {research_materials} to find the most relevant research content.
 
 Requirements:
 - Return only the most relevant research content
 - Focus on content that provides additional context, details, or insights
+- Focus on the topic of the transcript
+- Focus on characters, places, events, dates, details, tactics, strategies, conflicts, battles, facts, figures, statistics,etc.
 - Exclude irrelevant or redundant information
 - Format as a single block of text
 - Maximum 1000 words total
-- Maintain original formatting and structure
+- Digest the research content and highlight the most relevant parts
 '''
 
 # Expansion Idea Prompt
 EXPANSION_IDEA_PROMPT = '''
-Based on the following transcript, identify the most interesting aspect or what you feel should be expanded with more details.
+Based on the following transcript {transcript}, identify a new body paragraph to add or the most interesting aspect or what you feel should be expanded with more details.
 - Make sure it is not already expanded in the transcript
 - DO NOT suggest any of these previously expanded ideas: {previous_ideas}
 - Empasize strategic and tactical aspects
 - Empasize conflicts and battles
 - Do not be too sad or dark
 - strategic and tactical aspects
-- personal stories and perspectives
 - historical context
-- vivid imagery
 - detailed descriptions
 - specific names, dates, and events
 - try your best to not reduce the word count
 Return only the specific aspect/idea to expand, no additional text or formatting.
 
-Transcript:
-{transcript}
 '''
 
 # TranscriptPurifier.py Prompts

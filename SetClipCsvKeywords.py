@@ -45,10 +45,10 @@ class ClipRenamer:
         
         try:
             # Query OpenAI with the frame
-            prompt = "Describe what's happening in this video frame and identify any ethnic groups, people, military factions, places, structures, events, etc. Return only the description, no other text. No other formatting. Example: A truck driving down a road, on a gloomy day, sorrounded by rocks and trees."
+            prompt = "Describe what's happening in this video frame. Return only the description, no other text. No other formatting. Example: A truck driving down a road, on a gloomy day, sorrounded by rocks and trees."
             response = query_openai(
                 prompt=prompt,
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 api_key=self.api_key,
                 image_path=temp_filename
             )

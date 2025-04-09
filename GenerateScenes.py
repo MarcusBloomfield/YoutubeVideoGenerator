@@ -5,6 +5,7 @@ import pandas as pd
 from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips
 from OpenAiQuerying import query_openai, check_api_key
 import random
+import shutil
 from Prompts import CLIP_MATCHING_PROMPT, SCENE_GENERATION_PROMPT
 from Models import ModelCategories
 
@@ -19,6 +20,10 @@ def generate_scenes_by_matching():
     # Ensure output directory exists
     output_dir = "Scenes"
     ensure_dir(output_dir)
+    
+    # Ensure transcript archive directory exists
+    transcript_archive_dir = os.path.join("Transcript", "old")
+    ensure_dir(transcript_archive_dir)
     
     # Configuration variables
     additional_time_buffer = 3  # Additional seconds to add beyond transcript length
@@ -136,9 +141,20 @@ def generate_scenes_by_matching():
         
         # Combine clips with audio
         output_file = os.path.join(output_dir, f"{order_number}_scene_{transcript_id}.mp4")
-        combine_clips_with_audio(selected_clips, audio_file, output_file)
+        success = combine_clips_with_audio(selected_clips, audio_file, output_file)
         
-        print(f"Created scene: {output_file}")
+        if success:
+            print(f"Created scene: {output_file}")
+            
+            # Move transcript file to archive directory
+            if os.path.exists(transcript_file):
+                transcript_filename = os.path.basename(transcript_file)
+                archive_path = os.path.join(transcript_archive_dir, transcript_filename)
+                try:
+                    shutil.move(transcript_file, archive_path)
+                    print(f"Moved transcript to {archive_path}")
+                except Exception as e:
+                    print(f"Error moving transcript file: {e}")
         
     # Print summary at the end
     print(f"Generation complete. Used {len(used_clip_ids)} unique clips across all scenes.")
