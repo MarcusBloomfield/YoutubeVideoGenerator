@@ -12,18 +12,10 @@
         <header>
             <h1>YouTube Video Generator</h1>
             <p class="subtitle">Generate World War II YouTube Videos</p>
-            <div class="project-selection">
-                <select id="project-selector">
-                    <option value="">Select a project...</option>
-                </select>
-                <button id="create-project-btn" class="btn small">New Project</button>
-                <span id="current-project-display"></span>
-            </div>
         </header>
 
         <div class="tabs-container">
             <div class="tabs">
-                <button class="tab-btn" data-tab="projects">Projects</button>
                 <button class="tab-btn" data-tab="raw-video">Raw Video</button>
                 <button class="tab-btn" data-tab="clips">Clips</button>
                 <button class="tab-btn" data-tab="research">Research</button>
@@ -34,31 +26,6 @@
                 <button class="tab-btn" data-tab="combine">Combine</button>
                 <button class="tab-btn" data-tab="log">Log</button>
                 <button class="tab-btn" data-tab="settings">Settings</button>
-            </div>
-
-            <div class="tab-content" id="projects">
-                <h2>Project Management</h2>
-                <div class="project-card">
-                    <h3>Create New Project</h3>
-                    <div class="form-group">
-                        <label for="new-project-name">Project Name:</label>
-                        <input type="text" id="new-project-name" placeholder="Enter project name">
-                    </div>
-                    <div class="form-group">
-                        <button id="create-project" class="btn primary">Create Project</button>
-                    </div>
-                </div>
-                
-                <div class="project-card">
-                    <h3>Existing Projects</h3>
-                    <div class="form-group">
-                        <select id="project-list" class="full-width" size="5"></select>
-                        <button id="refresh-projects" class="btn small">Refresh List</button>
-                    </div>
-                    <div class="form-group">
-                        <button id="load-project" class="btn primary">Load Project</button>
-                    </div>
-                </div>
             </div>
 
             <div class="tab-content active" id="transcript">
@@ -198,6 +165,7 @@
                 </div>
             </div>
 
+            <!-- NEW: Log Window Tab -->
             <div class="tab-content" id="log">
                 <h2>Program Log</h2>
                 <div class="log-controls">
