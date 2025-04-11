@@ -1,6 +1,11 @@
 import os
 import csv
 import re
+import ProjectPathManager as paths
+
+# Define constant paths that can be overridden by YoutubeVideoGeneratorGUI.py
+TRANSCRIPT_DIR = paths.get_transcript_dir()
+OUTPUT_CSV = paths.get_transcripts_data_path()
 
 def parse_filename(filename):
     # Update regex to match format with multiple underscores in location: ORDER_ID_LOCATION_PART1_LOCATION_PART2_transcript.txt
@@ -18,10 +23,10 @@ def parse_filename(filename):
 
 def main():
     # Folder containing the transcripts
-    transcripts_folder = "Transcript"
+    transcripts_folder = TRANSCRIPT_DIR
     
     # Output CSV file
-    output_csv = "transcripts_data.csv"
+    output_csv = OUTPUT_CSV
     
     # Check if the Transcripts folder exists
     if not os.path.exists(transcripts_folder):

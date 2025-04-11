@@ -1,11 +1,12 @@
 import os
 import csv
 import re
+import ProjectPathManager as paths
 
-def match_audio_to_transcript():
+def match_audio_to_transcript(csv_file=None, audio_folder=None):
     # Define paths
-    audio_folder = "Audio"
-    csv_file = "transcripts_data.csv"
+    audio_folder = audio_folder or paths.get_audio_dir()
+    csv_file = csv_file or paths.get_transcripts_data_path()
     
     # Get list of audio files
     audio_files = os.listdir(audio_folder)
@@ -39,6 +40,7 @@ def match_audio_to_transcript():
         writer.writerows(csv_data)
     
     print(f"Matched {matches} audio files to transcript entries.")
+    return matches
 
 if __name__ == "__main__":
     match_audio_to_transcript()

@@ -25,6 +25,7 @@ import TranscriptPurifier
 import PurifyClipsData
 import OpenAiQuerying
 import RawVideoRenamer
+import ProjectManager
 from dotenv import load_dotenv
 
 # Initialize Eel
@@ -32,6 +33,9 @@ eel.init('web')
 
 # Load environment variables
 load_dotenv()
+
+# Initialize the project manager
+project_manager = ProjectManager.get_project_manager()
 
 # Global variables to store captured output
 captured_output = ""
@@ -80,6 +84,64 @@ def update_progress(percent, message=None):
     if message:
         log_message(f"Progress {percent}%: {message}")
     time.sleep(0.1)  # Small delay to allow UI to update
+
+# Exposed functions for Project Management
+@eel.expose
+def get_projects():
+    """Get a list of all projects"""
+    log_message("Getting list of projects...", 'info')
+    projects = project_manager.get_projects_list()
+    log_message(f"Found {len(projects)} projects", 'info')
+    return projects
+
+@eel.expose
+def create_project(project_name):
+    """Create a new project"""
+    log_message(f"Creating new project: {project_name}", 'info')
+    try:
+        project_manager.create_project(project_name)
+        log_message(f"Project '{project_name}' created successfully", 'info')
+        return {"success": True, "message": f"Project '{project_name}' created successfully"}
+    except Exception as e:
+        log_message(f"Error creating project: {str(e)}", 'error')
+        return {"success": False, "message": f"Error: {str(e)}"}
+
+@eel.expose
+def load_project(project_name):
+    """Load an existing project"""
+    log_message(f"Loading project: {project_name}", 'info')
+    try:
+        project_manager.load_project(project_name)
+        log_message(f"Project '{project_name}' loaded successfully", 'info')
+        return {"success": True, "message": f"Project '{project_name}' loaded successfully"}
+    except Exception as e:
+        log_message(f"Error loading project: {str(e)}", 'error')
+        return {"success": False, "message": f"Error: {str(e)}"}
+
+@eel.expose
+def get_current_project():
+    """Get the current project name"""
+    if project_manager.current_project:
+        return project_manager.current_project
+    return None
+
+# Helper function to get project-aware file path
+def get_project_path(path):
+    """Get the path considering the current project structure"""
+    if project_manager.current_project:
+        # If it's a directory at the root level
+        if path in ["Scenes", "Transcript", "Audio", "RawVideo", "Clips", "Output", "Research"]:
+            return project_manager.get_project_path(path)
+        # If it's a file at the root level
+        elif path in ["clips_data.csv", "transcripts_data.csv"]:
+            return os.path.join(project_manager.get_project_path(), path)
+        # If it's a path with subdirectories
+        elif any(path.startswith(d + "/") for d in ["Scenes", "Transcript", "Audio", "RawVideo", "Clips", "Output", "Research"]):
+            parts = path.split("/", 1)
+            return os.path.join(project_manager.get_project_path(parts[0]), parts[1])
+    
+    # Default to the original path if no project is loaded
+    return path
 
 # Exposed functions for the UI
 @eel.expose
@@ -131,7 +193,20 @@ def purify_clips_data():
     update_progress(10, "Starting clips data purification...")
     
     try:
-        output = capture_stdout(PurifyClipsData.purify_clips_data)
+        # If a project is loaded, make sure we're using the project's file
+        if project_manager.current_project:
+            # Temporarily modify the paths in the module
+            original_clips_data_path = PurifyClipsData.CLIPS_DATA_PATH
+            PurifyClipsData.CLIPS_DATA_PATH = os.path.join(project_manager.get_project_path(), "clips_data.csv")
+            
+            # Run the function
+            output = capture_stdout(PurifyClipsData.purify_clips_data)
+            
+            # Restore the original path
+            PurifyClipsData.CLIPS_DATA_PATH = original_clips_data_path
+        else:
+            output = capture_stdout(PurifyClipsData.purify_clips_data)
+            
         update_progress(100, "Clips data purification complete!")
         log_message("Clips data purification completed successfully", 'info')
         return output
@@ -146,7 +221,15 @@ def extract_clips():
     update_progress(10, "Starting clip extraction...")
     
     try:
-        mp4_extractor = Mp4ClipsExtractor.Mp4ClipsExtractor()
+        # If a project is loaded, temporarily modify paths
+        if project_manager.current_project:
+            mp4_extractor = Mp4ClipsExtractor.Mp4ClipsExtractor(
+                raw_video_dir=project_manager.get_project_path("RawVideo"),
+                clips_dir=project_manager.get_project_path("Clips")
+            )
+        else:
+            mp4_extractor = Mp4ClipsExtractor.Mp4ClipsExtractor()
+            
         output = capture_stdout(mp4_extractor.main)
         update_progress(100, "Clip extraction complete!")
         log_message("Clip extraction completed successfully", 'info')
@@ -162,7 +245,14 @@ def set_clip_keywords():
     update_progress(10, "Starting keyword setting...")
     
     try:
-        keyword_setter = SetClipCsvKeywords.SetClipCsvKeywords()
+        # If a project is loaded, temporarily modify paths
+        if project_manager.current_project:
+            keyword_setter = SetClipCsvKeywords.SetClipCsvKeywords(
+                clips_data_path=os.path.join(project_manager.get_project_path(), "clips_data.csv")
+            )
+        else:
+            keyword_setter = SetClipCsvKeywords.SetClipCsvKeywords()
+            
         output = capture_stdout(keyword_setter.main)
         update_progress(100, "Keyword setting complete!")
         log_message("Keyword setting completed successfully", 'info')
@@ -178,7 +268,15 @@ def parse_to_csv():
     update_progress(10, "Starting parsing to CSV...")
     
     try:
-        parser = ParseClipsToCsv.ParseClipsToCsv()
+        # If a project is loaded, temporarily modify paths
+        if project_manager.current_project:
+            parser = ParseClipsToCsv.ParseClipsToCsv(
+                clips_dir=project_manager.get_project_path("Clips"),
+                output_csv=os.path.join(project_manager.get_project_path(), "clips_data.csv")
+            )
+        else:
+            parser = ParseClipsToCsv.ParseClipsToCsv()
+            
         output = capture_stdout(parser.main)
         update_progress(100, "Parsing to CSV complete!")
         log_message("Parsing to CSV completed successfully", 'info')
@@ -202,7 +300,21 @@ def generate_scenes():
         update_progress(30, "Parsing transcripts to CSV...")
         all_output.append("\n=== PARSING TRANSCRIPTS TO CSV ===")
         try:
-            all_output.append(capture_stdout(ParseTranscriptsToCsv.main))
+            # If a project is loaded, temporarily modify paths
+            if project_manager.current_project:
+                original_transcript_dir = ParseTranscriptsToCsv.TRANSCRIPT_DIR
+                original_output_csv = ParseTranscriptsToCsv.OUTPUT_CSV
+                
+                ParseTranscriptsToCsv.TRANSCRIPT_DIR = project_manager.get_project_path("Transcript")
+                ParseTranscriptsToCsv.OUTPUT_CSV = os.path.join(project_manager.get_project_path(), "transcripts_data.csv")
+                
+                all_output.append(capture_stdout(ParseTranscriptsToCsv.main))
+                
+                # Restore original paths
+                ParseTranscriptsToCsv.TRANSCRIPT_DIR = original_transcript_dir
+                ParseTranscriptsToCsv.OUTPUT_CSV = original_output_csv
+            else:
+                all_output.append(capture_stdout(ParseTranscriptsToCsv.main))
         except Exception as e:
             log_message(f"Error in ParseTranscriptsToCsv: {str(e)}", 'error')
             all_output.append(f"ERROR: {str(e)}")
@@ -212,7 +324,17 @@ def generate_scenes():
         update_progress(45, "Matching audio to transcript in CSV...")
         all_output.append("\n=== MATCHING AUDIO TO TRANSCRIPT ===")
         try:
-            all_output.append(capture_stdout(MatchAudioToTranscriptInCsv.match_audio_to_transcript))
+            # If a project is loaded, temporarily modify paths
+            if project_manager.current_project:
+                # Use a wrapper function to handle path modifications
+                def match_with_project_paths():
+                    csv_file = os.path.join(project_manager.get_project_path(), "transcripts_data.csv")
+                    audio_dir = project_manager.get_project_path("Audio")
+                    return MatchAudioToTranscriptInCsv.match_audio_to_transcript(csv_file, audio_dir)
+                
+                all_output.append(capture_stdout(match_with_project_paths))
+            else:
+                all_output.append(capture_stdout(MatchAudioToTranscriptInCsv.match_audio_to_transcript))
         except Exception as e:
             log_message(f"Error in MatchAudioToTranscriptInCsv: {str(e)}", 'error')
             all_output.append(f"ERROR: {str(e)}")
@@ -225,7 +347,10 @@ def generate_scenes():
         try:
             # Create a function to call the transcript length function safely
             def update_lengths():
-                csv_file_path = "transcripts_data.csv"
+                if project_manager.current_project:
+                    csv_file_path = os.path.join(project_manager.get_project_path(), "transcripts_data.csv")
+                else:
+                    csv_file_path = "transcripts_data.csv"
                 return SetTranscriptCsvLength.update_csv_with_audio_lengths(csv_file_path)
                 
             all_output.append(capture_stdout(update_lengths))
@@ -238,7 +363,16 @@ def generate_scenes():
         update_progress(80, "Generating scenes from clips and transcript...")
         all_output.append("\n=== GENERATING SCENES ===")
         try:
-            scene_generator = GenerateScenes.GenerateScenes()
+            # If a project is loaded, temporarily modify paths
+            if project_manager.current_project:
+                scene_generator = GenerateScenes.GenerateScenes(
+                    clips_csv=os.path.join(project_manager.get_project_path(), "clips_data.csv"),
+                    transcripts_csv=os.path.join(project_manager.get_project_path(), "transcripts_data.csv"),
+                    scenes_dir=project_manager.get_project_path("Scenes")
+                )
+            else:
+                scene_generator = GenerateScenes.GenerateScenes()
+                
             all_output.append(capture_stdout(scene_generator.main))
         except Exception as e:
             log_message(f"Error in GenerateScenes: {str(e)}", 'error')
@@ -270,7 +404,17 @@ def create_narration():
         update_progress(30, "Processing transcripts...")
         all_output.append("=== PROCESSING TRANSCRIPTS ===")
         try:
-            all_output.append(capture_stdout(TranscriptSeperator.process_all_transcripts))
+            # If a project is loaded, temporarily modify paths
+            if project_manager.current_project:
+                # Use a wrapper function to handle path modifications
+                def process_transcripts_with_project_paths():
+                    transcript_dir = project_manager.get_project_path("Transcript")
+                    audio_dir = project_manager.get_project_path("Audio")
+                    return TranscriptSeperator.process_all_transcripts(transcript_dir, audio_dir)
+                
+                all_output.append(capture_stdout(process_transcripts_with_project_paths))
+            else:
+                all_output.append(capture_stdout(TranscriptSeperator.process_all_transcripts))
         except Exception as e:
             log_message(f"Error in TranscriptSeperator: {str(e)}", 'error')
             all_output.append(f"ERROR: {str(e)}")
@@ -280,7 +424,15 @@ def create_narration():
         update_progress(60, "Creating narration...")
         all_output.append("\n=== CREATING NARRATION ===")
         try:
-            narration_creator = CreateNarration.CreateNarration()
+            # If a project is loaded, temporarily modify paths
+            if project_manager.current_project:
+                narration_creator = CreateNarration.CreateNarration(
+                    transcript_dir=project_manager.get_project_path("Transcript"),
+                    audio_dir=project_manager.get_project_path("Audio")
+                )
+            else:
+                narration_creator = CreateNarration.CreateNarration()
+                
             all_output.append(capture_stdout(narration_creator.process_transcripts))
         except Exception as e:
             log_message(f"Error in CreateNarration: {str(e)}", 'error')
@@ -307,7 +459,15 @@ def combine_media(output_name=None):
         log_message(f"Using custom output name: {output_name}", 'info')
     
     try:
-        combiner = Combine.Combine()
+        # If a project is loaded, temporarily modify paths
+        if project_manager.current_project:
+            combiner = Combine.Combine(
+                scenes_dir=project_manager.get_project_path("Scenes"),
+                output_dir=project_manager.get_project_path("Output")
+            )
+        else:
+            combiner = Combine.Combine()
+            
         output = capture_stdout(combiner.main, output_name)
         update_progress(100, "Media combination complete!")
         log_message("Media combination completed successfully", 'info')
@@ -339,11 +499,17 @@ def research_topic(topic, urls, loops=1):
         
         update_progress(30, f"Researching topic '{topic}' from {len(url_list)} URLs...")
         
+        # If a project is loaded, temporarily modify output path
+        research_output_dir = "Research"
+        if project_manager.current_project:
+            research_output_dir = project_manager.get_project_path("Research")
+        
         # Call Research module
         output = capture_stdout(
             Research.research_topic,
             url_list,
-            topic
+            topic,
+            output_dir=research_output_dir
         )
         
         update_progress(100, "Research complete!")
@@ -361,7 +527,12 @@ def expand_transcript_file(transcript_file, loops=1, words_needed=1000):
         log_message("Error: OpenAI API key not set", 'error')
         return "Error: OpenAI API key not set. Please set it in the Settings tab."
     
-    transcript_path = os.path.join("Transcript", transcript_file)
+    # If a project is loaded, use the project path
+    transcript_base_dir = "Transcript"
+    if project_manager.current_project:
+        transcript_base_dir = project_manager.get_project_path("Transcript")
+        
+    transcript_path = os.path.join(transcript_base_dir, transcript_file)
     
     # Check if the transcript file exists
     if not os.path.exists(transcript_path):
@@ -395,7 +566,10 @@ def expand_transcript_file(transcript_file, loops=1, words_needed=1000):
 @eel.expose
 def get_transcript_files():
     """Get a list of transcript files in the Transcript directory"""
+    # If a project is loaded, use the project path
     transcript_dir = "Transcript"
+    if project_manager.current_project:
+        transcript_dir = project_manager.get_project_path("Transcript")
     
     log_message("Getting list of transcript files...", 'info')
     if not os.path.exists(transcript_dir):
@@ -413,13 +587,18 @@ def get_transcript_files():
 @eel.expose
 def rename_raw_videos(append_string="_processed"):
     """Rename raw video files in the RawVideo directory"""
+    # If a project is loaded, use the project path
+    raw_video_dir = "RawVideo"
+    if project_manager.current_project:
+        raw_video_dir = project_manager.get_project_path("RawVideo")
+        
     log_message(f"Starting raw video renaming with append string: '{append_string}'", 'info')
     update_progress(10, "Starting raw video renaming process...")
     
     try:
         output = capture_stdout(
             RawVideoRenamer.rename_video_files,
-            directory="RawVideo",
+            directory=raw_video_dir,
             append_string=append_string
         )
         
@@ -433,7 +612,10 @@ def rename_raw_videos(append_string="_processed"):
 @eel.expose
 def get_raw_video_files():
     """Get a list of video files in the RawVideo directory"""
+    # If a project is loaded, use the project path
     raw_video_dir = "RawVideo"
+    if project_manager.current_project:
+        raw_video_dir = project_manager.get_project_path("RawVideo")
     
     log_message("Getting list of raw video files...", 'info')
     if not os.path.exists(raw_video_dir):
@@ -455,6 +637,10 @@ def get_raw_video_files():
 @eel.expose
 def get_directory_contents(directory):
     """Get the contents of a directory"""
+    # If a project is loaded and this is a project directory
+    if project_manager.current_project and directory in ["Scenes", "Transcript", "Audio", "RawVideo", "Clips", "Output", "Research"]:
+        directory = project_manager.get_project_path(directory)
+    
     log_message(f"Getting contents of directory: {directory}", 'info')
     if not os.path.exists(directory):
         log_message(f"Creating directory: {directory}", 'info')
@@ -487,6 +673,17 @@ def get_directory_contents(directory):
 @eel.expose
 def read_file_content(file_path):
     """Read the content of a file"""
+    # If a project is loaded, check if this is a project file
+    if project_manager.current_project:
+        # Convert paths for CSV files
+        if file_path in ["clips_data.csv", "transcripts_data.csv"]:
+            file_path = os.path.join(project_manager.get_project_path(), file_path)
+        # Check for files in project directories
+        elif "/" in file_path:
+            parts = file_path.split("/", 1)
+            if parts[0] in ["Scenes", "Transcript", "Audio", "RawVideo", "Clips", "Output", "Research"]:
+                file_path = os.path.join(project_manager.get_project_path(parts[0]), parts[1])
+    
     log_message(f"Reading file: {file_path}", 'info')
     try:
         if not os.path.exists(file_path):
@@ -508,11 +705,25 @@ def get_system_info():
     """Get system information for the log"""
     log_message("Getting system information...", 'info')
     try:
-        system_info = {
-            "os": sys.platform,
-            "python_version": sys.version,
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "directories": {
+        # If a project is loaded, get project-specific directories
+        if project_manager.current_project:
+            directories = {
+                "transcript": os.path.exists(project_manager.get_project_path("Transcript")),
+                "clips": os.path.exists(project_manager.get_project_path("Clips")),
+                "scenes": os.path.exists(project_manager.get_project_path("Scenes")),
+                "audio": os.path.exists(project_manager.get_project_path("Audio")),
+                "output": os.path.exists(project_manager.get_project_path("Output")),
+                "raw_video": os.path.exists(project_manager.get_project_path("RawVideo")),
+                "research": os.path.exists(project_manager.get_project_path("Research"))
+            }
+            
+            # Check for key files
+            key_files = {
+                "clips_data.csv": os.path.exists(os.path.join(project_manager.get_project_path(), "clips_data.csv")),
+                "transcripts_data.csv": os.path.exists(os.path.join(project_manager.get_project_path(), "transcripts_data.csv"))
+            }
+        else:
+            directories = {
                 "transcript": os.path.exists("Transcript"),
                 "clips": os.path.exists("Clips"),
                 "scenes": os.path.exists("Scenes"),
@@ -521,12 +732,20 @@ def get_system_info():
                 "raw_video": os.path.exists("RawVideo"),
                 "research": os.path.exists("Research")
             }
-        }
+            
+            # Check for key files
+            key_files = {
+                "clips_data.csv": os.path.exists("clips_data.csv"),
+                "transcripts_data.csv": os.path.exists("transcripts_data.csv")
+            }
         
-        # Check for key files
-        system_info["key_files"] = {
-            "clips_data.csv": os.path.exists("clips_data.csv"),
-            "transcripts_data.csv": os.path.exists("transcripts_data.csv")
+        system_info = {
+            "os": sys.platform,
+            "python_version": sys.version,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "directories": directories,
+            "key_files": key_files,
+            "current_project": project_manager.current_project
         }
         
         log_message("System information collected", 'info')
@@ -538,8 +757,12 @@ def get_system_info():
 @eel.expose
 def get_latest_transcript_content():
     """Get the content of the most recently generated transcript file"""
-    log_message("Getting content of the latest transcript file...", 'info')
+    # If a project is loaded, use the project path
     transcript_dir = "Transcript"
+    if project_manager.current_project:
+        transcript_dir = project_manager.get_project_path("Transcript")
+    
+    log_message("Getting content of the latest transcript file...", 'info')
     
     if not os.path.exists(transcript_dir):
         log_message("Transcript directory not found", 'error')
@@ -571,6 +794,9 @@ def get_latest_transcript_content():
 
 # Run the Eel app
 def main():
+    # Create Projects directory if it doesn't exist
+    project_manager.ensure_projects_directory()
+    
     # Create necessary directories if they don't exist
     directories = ["Transcript", "Clips", "Scenes", "Audio", "Output", "RawVideo", "Research"]
     for directory in directories:

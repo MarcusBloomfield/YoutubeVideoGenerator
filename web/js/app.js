@@ -23,8 +23,70 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (tabId === 'log') {
                 // Load system information when log tab is opened
                 loadSystemInfo();
+            } else if (tabId === 'projects') {
+                // Load project list when projects tab is opened
+                loadProjectList();
             }
         });
+    });
+
+    // Load current project if available
+    loadCurrentProject();
+
+    // Project management functionality
+    document.getElementById('project-selector').addEventListener('change', async function() {
+        const selectedProject = this.value;
+        if (selectedProject) {
+            loadSelectedProject(selectedProject);
+        }
+    });
+
+    document.getElementById('create-project-btn').addEventListener('click', function() {
+        // Switch to projects tab
+        const projectsTab = document.querySelector('.tab-btn[data-tab="projects"]');
+        projectsTab.click();
+    });
+
+    document.getElementById('create-project').addEventListener('click', async function() {
+        const projectName = document.getElementById('new-project-name').value;
+        if (!projectName) {
+            showMessage('Please enter a project name', 'error');
+            return;
+        }
+
+        showProgress('Creating new project...');
+        try {
+            const result = await eel.create_project(projectName)();
+            if (result.success) {
+                document.getElementById('new-project-name').value = '';
+                loadProjectList();
+                loadCurrentProject();
+                hideProgress();
+                showMessage(result.message, 'success');
+            } else {
+                hideProgress();
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            hideProgress();
+            showMessage('Error creating project: ' + error, 'error');
+        }
+    });
+
+    document.getElementById('refresh-projects').addEventListener('click', function() {
+        loadProjectList();
+    });
+
+    document.getElementById('load-project').addEventListener('click', async function() {
+        const projectSelect = document.getElementById('project-list');
+        const selectedProject = projectSelect.value;
+        
+        if (!selectedProject) {
+            showMessage('Please select a project', 'error');
+            return;
+        }
+
+        loadSelectedProject(selectedProject);
     });
 
     // Load API key from storage if available
@@ -402,6 +464,93 @@ document.addEventListener('DOMContentLoaded', function() {
         add_log('Log system initialized', 'info');
         add_log('Welcome to YouTube Video Generator', 'info');
     }, 500);
+
+    // Project Management Functions
+    async function loadProjectList() {
+        try {
+            const projects = await eel.get_projects()();
+            const projectList = document.getElementById('project-list');
+            const projectSelector = document.getElementById('project-selector');
+            
+            // Clear existing options in project list
+            projectList.innerHTML = '';
+            
+            // Clear and recreate the default option in project selector
+            projectSelector.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.text = 'Select a project...';
+            projectSelector.add(defaultOption);
+            
+            if (projects.length === 0) {
+                const option = document.createElement('option');
+                option.text = 'No projects found';
+                option.disabled = true;
+                projectList.add(option);
+            } else {
+                projects.forEach(project => {
+                    // Add to project list in Projects tab
+                    const listOption = document.createElement('option');
+                    listOption.value = project;
+                    listOption.text = project;
+                    projectList.add(listOption);
+                    
+                    // Add to project selector dropdown
+                    const selectorOption = document.createElement('option');
+                    selectorOption.value = project;
+                    selectorOption.text = project;
+                    projectSelector.add(selectorOption);
+                });
+            }
+        } catch (error) {
+            showMessage('Error loading project list: ' + error, 'error');
+        }
+    }
+    
+    async function loadCurrentProject() {
+        try {
+            const currentProject = await eel.get_current_project()();
+            if (currentProject) {
+                // Update project selector
+                const projectSelector = document.getElementById('project-selector');
+                projectSelector.value = currentProject;
+                
+                // Update current project display
+                const projectDisplay = document.getElementById('current-project-display');
+                projectDisplay.textContent = `Current: ${currentProject}`;
+                projectDisplay.style.display = 'inline-block';
+            } else {
+                // No project loaded
+                const projectDisplay = document.getElementById('current-project-display');
+                projectDisplay.textContent = '';
+                projectDisplay.style.display = 'none';
+            }
+        } catch (error) {
+            showMessage('Error loading current project: ' + error, 'error');
+        }
+    }
+    
+    async function loadSelectedProject(projectName) {
+        showProgress(`Loading project: ${projectName}...`);
+        try {
+            const result = await eel.load_project(projectName)();
+            if (result.success) {
+                // Refresh all data that depends on project
+                loadCurrentProject();
+                loadTranscriptFiles();
+                loadRawVideoFiles();
+                
+                hideProgress();
+                showMessage(result.message, 'success');
+            } else {
+                hideProgress();
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            hideProgress();
+            showMessage('Error loading project: ' + error, 'error');
+        }
+    }
 });
 
 // Utility functions
