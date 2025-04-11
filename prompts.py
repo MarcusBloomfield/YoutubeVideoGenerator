@@ -227,10 +227,8 @@ Return only the specific aspect/idea to expand, no additional text or formatting
 '''
 
 # TranscriptPurifier.py Prompts
-TRANSCRIPT_PURIFIER_PROMPT = '''Maintain exact word count if possible.
-Preserve all technical terms, names, and specific details exactly as they appear.
-Only make minimal changes needed for clarity, keeping the exact same meaning and all content intact.
-Return the complete transcript with minimal edits, maintaining all original information.
+TRANSCRIPT_PURIFIER_PROMPT = '''
+ReWrite {content} to be a transcript for a YouTube video.
 
 Requirements:
 - Style: War report format
@@ -246,17 +244,12 @@ Requirements:
   * Specific dates and locations
   * Key figures
   * Accurate historical details
+- Minimum: 1000 words (more is better)
 - No section headers or formatting
 - Optimized for text-to-speech narration
 
-We need an introduction to the topic.
-We need clear chapters of the text logically seperated and leading to each other.
-We need a conclusion to the topic.
 
-NO OTHER FORMATING
-NEEDS TO BE IN A BLOCK OF TEXT SEPERATED BY PARAGRAPHS.
 
-{content}
 ''' 
 
 SCENE_GENERATION_PROMPT = """

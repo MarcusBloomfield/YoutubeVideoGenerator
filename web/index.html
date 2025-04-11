@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="text/javascript" src="/eel.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube Video Generator</h1>
+            <p class="subtitle">Generate World War II YouTube Videos</p>
+        </header>
+
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab-btn" data-tab="raw-video">Raw Video</button>
+                <button class="tab-btn" data-tab="clips">Clips</button>
+                <button class="tab-btn" data-tab="research">Research</button>
+                <button class="tab-btn active" data-tab="transcript">Transcript</button>
+                <button class="tab-btn" data-tab="transcript-expand">Expand</button>
+                <button class="tab-btn" data-tab="narration">Narration</button>
+                <button class="tab-btn" data-tab="scenes">Scenes</button>
+                <button class="tab-btn" data-tab="combine">Combine</button>
+                <button class="tab-btn" data-tab="log">Log</button>
+                <button class="tab-btn" data-tab="settings">Settings</button>
+            </div>
+
+            <div class="tab-content active" id="transcript">
+                <h2>Generate Transcript</h2>
+                <div class="form-group">
+                    <label for="topic">Main Topic:</label>
+                    <input type="text" id="topic" value="Normandy Landing">
+                </div>
+                <div class="form-group">
+                    <label for="subtopics">Subtopics (comma-separated):</label>
+                    <input type="text" id="subtopics" value="Planning, Execution, Aftermath">
+                </div>
+                <div class="form-group">
+                    <button id="generate-transcript" class="btn primary">Generate Transcript</button>
+                </div>
+                <div class="form-group">
+                    <label for="transcript-output">Output:</label>
+                    <textarea id="transcript-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="transcript-expand">
+                <h2>Expand Transcript</h2>
+                <div class="form-group">
+                    <label for="transcript-select">Select Transcript:</label>
+                    <select id="transcript-select" class="full-width"></select>
+                    <button id="refresh-transcripts" class="btn small">Refresh List</button>
+                </div>
+                <div class="form-group">
+                    <label for="expansion-loops">Expansion Loops:</label>
+                    <input type="number" id="expansion-loops" value="1" min="1" max="5">
+                </div>
+                <div class="form-group">
+                    <label for="target-words">Target Word Count:</label>
+                    <input type="number" id="target-words" value="1000" min="500" step="100">
+                </div>
+                <div class="form-group">
+                    <button id="expand-transcript" class="btn primary">Expand Transcript</button>
+                </div>
+                <div class="form-group">
+                    <label for="expansion-output">Output:</label>
+                    <textarea id="expansion-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="research">
+                <h2>Research Topic</h2>
+                <div class="form-group">
+                    <label for="research-topic">Research Topic:</label>
+                    <input type="text" id="research-topic" value="World War II Tactics">
+                </div>
+                <div class="form-group">
+                    <label for="research-urls">URLs (comma-separated):</label>
+                    <textarea id="research-urls" rows="3" placeholder="https://example.com/article1, https://example.com/article2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="research-loops">Research Loops:</label>
+                    <input type="number" id="research-loops" value="1" min="1" max="3">
+                </div>
+                <div class="form-group">
+                    <button id="research-topic-btn" class="btn primary">Research Topic</button>
+                </div>
+                <div class="form-group">
+                    <label for="research-output">Output:</label>
+                    <textarea id="research-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="raw-video">
+                <h2>Raw Video Management</h2>
+                <div class="form-group">
+                    <label for="video-files">Raw Video Files:</label>
+                    <select id="video-files" class="full-width" size="5" multiple></select>
+                    <button id="refresh-videos" class="btn small">Refresh List</button>
+                </div>
+                <div class="form-group">
+                    <label for="append-string">Append String:</label>
+                    <input type="text" id="append-string" value="_processed">
+                </div>
+                <div class="form-group">
+                    <button id="rename-videos" class="btn primary">Rename Videos</button>
+                </div>
+                <div class="form-group">
+                    <label for="raw-video-output">Output:</label>
+                    <textarea id="raw-video-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="clips">
+                <h2>Process Video Clips</h2>
+                <div class="form-group">
+                    <button id="purify-clips" class="btn">Purify Clips Data</button>
+                    <button id="extract-clips" class="btn">Extract Clips</button>
+                    <button id="set-keywords" class="btn">Set Keywords</button>
+                    <button id="parse-to-csv" class="btn">Parse to CSV</button>
+                </div>
+                <div class="form-group">
+                    <label for="clips-output">Output:</label>
+                    <textarea id="clips-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="scenes">
+                <h2>Generate Scenes</h2>
+                <div class="form-group">
+                    <button id="generate-scenes" class="btn primary">Generate Scenes</button>
+                </div>
+                <div class="form-group">
+                    <label for="scenes-output">Output:</label>
+                    <textarea id="scenes-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="narration">
+                <h2>Create Narration</h2>
+                <div class="form-group">
+                    <button id="create-narration" class="btn primary">Create Narration</button>
+                </div>
+                <div class="form-group">
+                    <label for="narration-output">Output:</label>
+                    <textarea id="narration-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <div class="tab-content" id="combine">
+                <h2>Combine Video and Audio</h2>
+                <div class="form-group">
+                    <label for="output-name">Output Filename (optional):</label>
+                    <input type="text" id="output-name" placeholder="combined_output">
+                </div>
+                <div class="form-group">
+                    <button id="combine-media" class="btn primary">Combine</button>
+                </div>
+                <div class="form-group">
+                    <label for="combine-output">Output:</label>
+                    <textarea id="combine-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
+            <!-- NEW: Log Window Tab -->
+            <div class="tab-content" id="log">
+                <h2>Program Log</h2>
+                <div class="log-controls">
+                    <button id="clear-log" class="btn">Clear Log</button>
+                    <button id="save-log" class="btn">Save Log</button>
+                    <div class="log-filter">
+                        <label><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
+                        <select id="log-level">
+                            <option value="all">All Logs</option>
+                            <option value="info">Info</option>
+                            <option value="warning">Warnings</option>
+                            <option value="error">Errors</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="log-container">
+                    <pre id="log-content"></pre>
+                </div>
+            </div>
+
+            <div class="tab-content" id="settings">
+                <h2>Settings</h2>
+                <div class="form-group">
+                    <label for="api-key">OpenAI API Key:</label>
+                    <input type="password" id="api-key">
+                </div>
+                <div class="form-group">
+                    <button id="save-settings" class="btn primary">Save Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="progress-container" class="hidden">
+            <div class="progress-bar">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <div id="progress-text">Processing...</div>
+        </div>
+
+        <footer>
+            <p>© 2024 YouTube Video Generator</p>
+        </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html> 

@@ -14,6 +14,8 @@ import Research
 import TranscriptPurifier
 def main():
     VideoTranscriptGenerator().main()
+
+    TranscriptSeperator().main()
     CreateNarration().main()
 
     ParseTranscriptsToCsv().main()

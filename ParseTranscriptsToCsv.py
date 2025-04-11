@@ -30,27 +30,19 @@ def main():
     
     # Check if CSV file already exists and load existing transcript IDs
     existing_transcripts = set()
-    existing_data = []
     if os.path.exists(output_csv):
         with open(output_csv, 'r', newline='') as csvfile:
             csv_reader = csv.reader(csvfile)
-            existing_data = list(csv_reader)
             # Skip header row and get all transcript IDs from column 1
-            if len(existing_data) > 0:
-                existing_transcripts = {row[1] for row in existing_data[1:]}
-                print(f"Found {len(existing_transcripts)} existing transcripts in CSV")
+            next(csv_reader, None)  # Skip header
+            existing_transcripts = {row[1] for row in csv_reader if len(row) > 1}
+            print(f"Found {len(existing_transcripts)} existing transcripts in CSV")
+        
+        # Clear existing data, but still track transcript IDs to avoid duplicates
+        print(f"Clearing existing data from {output_csv}")
     
-    # Prepare CSV data
-    if existing_data:
-        csv_data = existing_data
-        # Check if transcript_file column exists in header, add if not
-        if "transcript_file" not in csv_data[0]:
-            csv_data[0].append("transcript_file")
-            # Add empty transcript_file values to existing rows
-            for i in range(1, len(csv_data)):
-                csv_data[i].append("")
-    else:
-        csv_data = [["order", "id", "date", "location", "length", "audio_file", "transcript_file"]]
+    # Start with fresh CSV data (header only)
+    csv_data = [["order", "id", "date", "location", "length", "audio_file", "transcript_file"]]
     
     # Track new transcripts added
     new_transcripts_count = 0

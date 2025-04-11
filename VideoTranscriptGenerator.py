@@ -14,13 +14,14 @@ def create_transcript_folder():
     print("[OK] Transcript folder ready")
 
 
-def generate_transcript_section(section_type, topic, subtopics=None, model=ModelCategories.getWriteTranscriptModel()):
+def generate_transcript_section(section_type, topic, full_transcript="", subtopics=None, relevant_research="", model=ModelCategories.getWriteTranscriptModel()):
     """
     Generate a specific section of the transcript (intro, body paragraph, or conclusion)
     
     Args:
         section_type: The type of section to generate ("intro", "body", or "conclusion")
         topic: The main topic
+        full_transcript: The full transcript generated so far
         subtopics: List of subtopics (only used for conclusion)
         model: The OpenAI model to use
         
@@ -31,19 +32,19 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
     relevant_research = ""
     try:
         if section_type == "intro":
-            relevant_research = find_relevant_research(topic)
             prompt = f"""
             Create an engaging introduction for a YouTube video about {topic} during World War II using {relevant_research}.
             Requirements:
             - Set the historical context
             - Capture viewer interest
             - Preview what will be covered in the video
-            - Length: 500 words
+            - Length: 100 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
+            
+            Current full transcript: {full_transcript}
             """
         elif section_type == "body":
-            relevant_research = find_relevant_research(topic)
 
             if not subtopics:
                 return ""
@@ -57,9 +58,11 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
             - Include relevant dates, figures, and events
             - Discuss military strategies and decisions if applicable
             - Include personal stories if applicable
-            - Length: 1000 words
+            - Length: 300 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
+            
+            Current full transcript: {full_transcript}
             """
         elif section_type == "conclusion":
             subtopics_text = ", ".join(subtopics) if subtopics else "various aspects of the topic"
@@ -72,9 +75,11 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
             - Summarize key points covered (the subtopics)
             - Discuss historical significance and impact
             - Provide a thought-provoking closing statement
-            - Length: 500 words
+            - Length: 100 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
+            
+            Current full transcript: {full_transcript}
             """
         
         # Query OpenAI to generate the section
@@ -119,26 +124,36 @@ def generate_transcript(topic="History", subtopics=None, model=ModelCategories.g
         filename = f"ww2_{topic.lower().replace(' ', '_')}_transcript.txt"
         transcript_path = os.path.join(output_dir, filename)
         
-        # Create the file immediately to start writing incrementally
-        with open(transcript_path, 'w', encoding='utf-8') as f:
-            # Generate intro
-            print("[INFO] Generating introduction...")
-            intro = generate_transcript_section("intro", topic, model=model)
-            f.write(intro + "\n\n")
-            print("[INFO] Introduction written to file")
-            
-            # Generate body paragraphs
-            for subtopic in subtopics:
-                print(f"[INFO] Generating body paragraph for subtopic: {subtopic}")
-                body = generate_transcript_section("body", topic, subtopic, model=model)
-                f.write(body + "\n\n")
-                print(f"[INFO] Body paragraph for {subtopic} written to file")
-            
-            # Generate conclusion
-            print("[INFO] Generating conclusion...")
-            conclusion = generate_transcript_section("conclusion", topic, subtopics, model=model)
-            f.write(conclusion)
-            print("[INFO] Conclusion written to file")
+        # Track the full transcript as we generate it
+        full_transcript = ""
+        
+        # Helper function to write the full transcript to file
+        def write_transcript_to_file():
+            with open(transcript_path, 'w', encoding='utf-8') as f:
+                f.write(full_transcript)
+        
+        # Generate intro
+        print("[INFO] Generating introduction...")
+        relevant_research = find_relevant_research(topic)
+        intro = generate_transcript_section("intro", topic, full_transcript, relevant_research, model=model)
+        full_transcript += intro + "\n\n"
+        write_transcript_to_file()
+        print("[INFO] Introduction written to file")
+        
+        # Generate body paragraphs
+        for subtopic in subtopics:
+            print(f"[INFO] Generating body paragraph for subtopic: {subtopic}")
+            body = generate_transcript_section("body", topic, full_transcript, subtopic, relevant_research, model=model)
+            full_transcript += body + "\n\n"
+            write_transcript_to_file()
+            print(f"[INFO] Body paragraph for {subtopic} written to file")
+        
+        # Generate conclusion
+        print("[INFO] Generating conclusion...")
+        conclusion = generate_transcript_section("conclusion", topic, full_transcript, subtopics, relevant_research, model=model)
+        full_transcript += conclusion
+        write_transcript_to_file()
+        print("[INFO] Conclusion written to file")
             
         print(f"[OK] Generated transcript saved to: {transcript_path}")
         return transcript_path
