@@ -2,10 +2,14 @@ import csv
 import re
 import os
 from pathlib import Path
+import ProjectPathManager as paths
+
+# Define paths as constants that can be overridden by YoutubeVideoGeneratorGUI.py
+CLIPS_DATA_PATH = paths.get_clips_data_path()
 
 def purify_clips_data():
-    input_file = "clips_data.csv"
-    output_file = "clips_data_purified.csv"
+    input_file = CLIPS_DATA_PATH
+    output_file = os.path.join(os.path.dirname(input_file), "clips_data_purified.csv")
     
     # Keywords to filter out (case-insensitive)
     keywords_to_filter = ["dark", "black", "handwriting"]
@@ -45,6 +49,12 @@ def purify_clips_data():
     print(f"Filtered out {filtered_rows} clips containing keywords: {', '.join(keywords_to_filter)}")
     print(f"Remaining clips: {total_rows - filtered_rows}")
     print(f"Purified data saved to {output_file}")
+    
+    # Rename the purified file to replace the original
+    os.replace(output_file, input_file)
+    print(f"Renamed purified file to {input_file}")
+    
+    return input_file
 
 if __name__ == "__main__":
     purify_clips_data()

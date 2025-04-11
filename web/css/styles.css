@@ -36,6 +36,7 @@ header {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--light-gray);
+    position: relative;
 }
 
 h1 {
@@ -47,6 +48,50 @@ h1 {
 .subtitle {
     font-size: 1.2rem;
     color: var(--dark-gray);
+}
+
+/* Project Selection */
+.project-selection {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.project-selection select {
+    max-width: 300px;
+}
+
+#current-project-display {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 8px 15px;
+    background-color: var(--success-color);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Project Management Tab */
+.project-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.project-card h3 {
+    color: var(--secondary-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+#project-list {
+    height: 200px;
 }
 
 /* Tabs */

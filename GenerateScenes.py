@@ -9,13 +9,16 @@ import shutil
 from Prompts import CLIP_MATCHING_PROMPT, SCENE_GENERATION_PROMPT
 from Models import ModelCategories
 import numpy as np
+import ProjectPathManager as paths
 
 class GenerateScenes:
     """Class for generating video scenes by matching transcripts with clips"""
     
-    def __init__(self):
+    def __init__(self, clips_csv=None, transcripts_csv=None, scenes_dir=None):
         """Initialize the scene generator"""
-        pass
+        self.clips_csv = clips_csv or paths.get_clips_data_path()
+        self.transcripts_csv = transcripts_csv or paths.get_transcripts_data_path()
+        self.scenes_dir = scenes_dir or paths.get_scenes_dir()
         
     @staticmethod
     def ensure_dir(directory):
@@ -95,11 +98,12 @@ class GenerateScenes:
     def generate_scenes_by_matching(self):
         """Generate video scenes by matching transcripts with clips"""
         # Ensure output directory exists
-        output_dir = "Scenes"
+        output_dir = self.scenes_dir
         self.ensure_dir(output_dir)
         
         # Ensure transcript archive directory exists
-        transcript_archive_dir = os.path.join("Transcript", "old")
+        transcript_dir = paths.get_transcript_dir()
+        transcript_archive_dir = os.path.join(transcript_dir, "old")
         self.ensure_dir(transcript_archive_dir)
         
         # Configuration variables
@@ -115,8 +119,8 @@ class GenerateScenes:
             return
         
         # Read CSV data
-        transcripts_df = pd.read_csv("transcripts_data.csv")
-        clips_df = pd.read_csv("clips_data.csv")
+        transcripts_df = pd.read_csv(self.transcripts_csv)
+        clips_df = pd.read_csv(self.clips_csv)
         
         # Process each transcript
         for index, transcript in transcripts_df.iterrows():
@@ -248,58 +252,54 @@ class GenerateScenes:
                 video = video.without_audio()
                 video_clips.append(video)
             
-            # Concatenate video clips
-            final_clip = concatenate_videoclips(video_clips)
+            # Concatenate all video clips
+            if not video_clips:
+                print("No video clips to combine")
+                return False
+                
+            final_video = concatenate_videoclips(video_clips)
             
-            # Load the audio
-            print(f"Adding audio from: {audio_file}")
+            # Load audio
+            if not os.path.exists(audio_file):
+                print(f"Audio file not found: {audio_file}")
+                # Save video without audio as fallback
+                final_video.write_videofile(output_file, codec='libx264', audio_codec='aac', threads=4)
+                return True
+                
             audio = AudioFileClip(audio_file)
             
-            # Verify audio loaded correctly
-            if audio is None:
-                print(f"Error: Audio could not be loaded from {audio_file}")
-                return False
+            # Trim silent parts of the audio
+            audio = self.detect_and_trim_silence(audio)
             
-            # Process audio to remove dead air longer than 1 second
-            print("Analyzing audio for long silent periods...")
-            audio = self.detect_and_trim_silence(audio, max_silence_duration=1.0)
+            # Set audio for the final video
+            final_video = final_video.set_audio(audio)
             
-            print(f"Audio duration after silence trimming: {audio.duration}, Video duration: {final_clip.duration}")
+            # If video is shorter than audio, loop the video
+            if final_video.duration < audio.duration:
+                print(f"Warning: Video duration ({final_video.duration}s) is shorter than audio ({audio.duration}s). Looping video.")
+                final_video = final_video.loop(duration=audio.duration)
+            # If video is longer than audio, trim the video
+            elif final_video.duration > audio.duration:
+                print(f"Trimming video ({final_video.duration}s) to match audio duration ({audio.duration}s)")
+                final_video = final_video.subclip(0, audio.duration)
             
-            # Ensure audio doesn't exceed video duration
-            if audio.duration > final_clip.duration:
-                audio = audio.subclipped(0, final_clip.duration)
+            # Write the final video file
+            final_video.write_videofile(output_file, codec='libx264', audio_codec='aac', threads=4)
+            return True
             
-            # Create final clip with audio
-            final_clip_with_audio = final_clip.with_audio(audio)
+        except Exception as e:
+            print(f"Error combining clips with audio: {e}")
+            return False
             
-            # Write the output file
-            final_clip_with_audio.write_videofile(
-                output_file,
-                codec='libx264',
-                audio_codec='aac',
-                temp_audiofile='temp-audio.m4a',
-                remove_temp=True
-            )
-            
-            # Close all clips to free memory
-            final_clip.close()
-            for clip in video_clips:
-                clip.close()
-            audio.close()
-            final_clip_with_audio.close()
-            
-            print(f"Successfully created: {output_file}")
+    def main(self):
+        """Main function to run the scene generation process"""
+        try:
+            self.generate_scenes_by_matching()
+            print("[OK] Scene generation completed successfully.")
             return True
         except Exception as e:
-            print(f"Error creating scene: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            print(f"[ERROR] Scene generation failed: {e}")
             return False
-
-    def main(self):
-        """Main entry point for scene generation"""
-        return self.generate_scenes_by_matching()
 
 if __name__ == "__main__":
     generator = GenerateScenes()
