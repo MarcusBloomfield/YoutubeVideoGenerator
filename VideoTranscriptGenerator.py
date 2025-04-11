@@ -38,7 +38,7 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
             - Set the historical context
             - Capture viewer interest
             - Preview what will be covered in the video
-            - Length: 150-200 words
+            - Length: 500 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
             """
@@ -57,7 +57,7 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
             - Include relevant dates, figures, and events
             - Discuss military strategies and decisions if applicable
             - Include personal stories if applicable
-            - Length: 200-250 words
+            - Length: 1000 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
             """
@@ -72,7 +72,7 @@ def generate_transcript_section(section_type, topic, subtopics=None, model=Model
             - Summarize key points covered (the subtopics)
             - Discuss historical significance and impact
             - Provide a thought-provoking closing statement
-            - Length: 150-200 words
+            - Length: 500 words
             - Format: Single paragraph optimized for narration
             - No section headers or formatting
             """

@@ -91,48 +91,24 @@ def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.get
     current_word_count = count_words(current_transcript)
     print(f"Original word count: {current_word_count}")
     
-    # Track previous expansion ideas to avoid duplicates
-    previous_ideas = []
-    
     # Perform the specified number of expansion loops
     for expansion_round in range(1, target_loops + 1):
         print(f"Starting expansion round {expansion_round} of {target_loops}")
-
-        # First, get an idea of what to expand from the current transcript
-        idea_prompt = EXPANSION_IDEA_PROMPT.format(
-            transcript=current_transcript,
-            previous_ideas="\n- ".join(previous_ideas) if previous_ideas else "None yet"
-        )
-        
+        research_content = ""
         try:
-            # Query OpenAI to find what to expand
-            print("Getting expansion idea...")
-            expansion_idea = query_openai(idea_prompt, model=ModelCategories.getDefaultModel())
+            # Find research directly related to the transcript
+            research_content = find_relevant_research(current_transcript)
             
-            if expansion_idea:
-                print(f"Found aspect to expand: {expansion_idea}")
-                # Track this idea to avoid duplicates in future rounds
-                previous_ideas.append(expansion_idea)
-                
-                # Now find research specifically about this expansion idea
-                research_content = find_relevant_research(expansion_idea)
-                
-                if not research_content:
-                    print("Error: No relevant research found for the expansion idea. Cannot expand transcript.")
-                    return current_transcript
-            else:
-                print("Error: Could not identify aspect to expand")
-                return current_transcript
-                
+            if not research_content:
+                print("Warning: No relevant research found for transcript. Will attempt expansion without research.")
         except Exception as e:
-            print(f"Error finding expansion idea: {e}")
-            return current_transcript
+            print(f"Error finding relevant research: {e}")
+            research_content = ""
         
         # Craft prompt for expansion that includes research materials
         prompt = EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT.format(
-            idea_prompt=idea_prompt,
-            words_needed=words_needed,  # Fixed word target per expansion
             current_transcript=current_transcript,
+            words_needed=words_needed,
             research_content=research_content
         )
         

@@ -13,16 +13,8 @@ import ExpandTranscript
 import Research
 import TranscriptPurifier
 def main():
-   # Mp4ClipsExtractor().main()
-    #ParseClipsToCsv().main()
-   # SetClipCsvKeywords().main()
-
-    #Research().main()
-    #VideoTranscriptGenerator().main()
-    #ExpandTranscript().main()
-    #TranscriptPurifier().main()
-    #TranscriptSeperator().main()
-    #CreateNarration().main()
+    VideoTranscriptGenerator().main()
+    CreateNarration().main()
 
     ParseTranscriptsToCsv().main()
     MatchAudioToTranscriptInCsv().main()

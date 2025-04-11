@@ -138,7 +138,7 @@ Transcript:
 '''
 
 EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT = '''
-Expand the following transcript with this idea {idea_prompt} to create a more detailed and engaging narrative.
+Expand the following transcript to create a more detailed and engaging narrative.
 IMPORTANT: You MUST keep ALL existing content and add new content. Do not remove or summarize any existing text.
 
 Requirements:
