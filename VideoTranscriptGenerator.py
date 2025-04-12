@@ -14,107 +14,53 @@ def create_transcript_folder():
     print("[OK] Transcript folder ready")
 
 
-def generate_transcript_section(section_type, topic, full_transcript="", subtopics=None, relevant_research="", model=ModelCategories.getWriteTranscriptModel()):
+def generate_complete_transcript(topic, relevant_research="", model=ModelCategories.getWriteTranscriptModel()):
     """
-    Generate a specific section of the transcript (intro, body paragraph, or conclusion)
+    Generate a complete transcript for a video in one go
     
     Args:
-        section_type: The type of section to generate ("intro", "body", or "conclusion")
         topic: The main topic
-        full_transcript: The full transcript generated so far
-        subtopics: List of subtopics (only used for conclusion)
+        relevant_research: Any relevant research to incorporate
         model: The OpenAI model to use
         
     Returns:
-        Generated section text
+        Generated transcript text
     """
-
-    relevant_research = ""
     try:
-        if section_type == "intro":
-            prompt = f"""
-            Create an engaging introduction for a YouTube video about {topic} during World War II using {relevant_research}.
-            Requirements:
-            - Set the historical context
-            - Capture viewer interest
-            - Preview what will be covered in the video
-            - Length: 100 words
-            - Format: Single paragraph optimized for narration
-            - No section headers or formatting
-            
-            Current full transcript: {full_transcript}
-            """
-        elif section_type == "body":
-
-            if not subtopics:
-                return ""
-            
-            prompt = f"""
-            Create an informative body paragraph for a YouTube video about {topic} during World War II, 
-            focusing specifically on the subtopic: {subtopics} using {relevant_research}.
-            
-            Requirements:
-            - Provide detailed information about this specific subtopic
-            - Include relevant dates, figures, and events
-            - Discuss military strategies and decisions if applicable
-            - Include personal stories if applicable
-            - Length: 300 words
-            - Format: Single paragraph optimized for narration
-            - No section headers or formatting
-            
-            Current full transcript: {full_transcript}
-            """
-        elif section_type == "conclusion":
-            subtopics_text = ", ".join(subtopics) if subtopics else "various aspects of the topic"
-            
-            prompt = f"""
-            Create a conclusion for a YouTube video about {topic} during World War II that summarizes 
-            the following subtopics: {subtopics_text}.
-            
-            Requirements:
-            - Summarize key points covered (the subtopics)
-            - Discuss historical significance and impact
-            - Provide a thought-provoking closing statement
-            - Length: 100 words
-            - Format: Single paragraph optimized for narration
-            - No section headers or formatting
-            
-            Current full transcript: {full_transcript}
-            """
+        prompt = f"""
+       {topic} in 1000 words using {relevant_research}.
         
-        # Query OpenAI to generate the section
-        section_text = query_openai(prompt, model=model)
+        Requirements:
+        - Format: Paragraphs optimized for narration
+        - No section headers or formatting
+        """
         
-        if not section_text:
-            print(f"[ERROR] No response from OpenAI API for {section_type} section")
+        # Query OpenAI to generate the complete transcript
+        transcript_text = query_openai(prompt, model=model)
+        
+        if not transcript_text:
+            print("[ERROR] No response from OpenAI API for transcript generation")
             return ""
             
-        return section_text
+        return transcript_text
         
     except Exception as e:
-        print(f"[ERROR] Error generating {section_type} section: {e}")
+        print(f"[ERROR] Error generating transcript: {e}")
         return ""
 
-def generate_transcript(topic="History", subtopics=None, model=ModelCategories.getWriteTranscriptModel()):
+def generate_transcript(topic="History", model=ModelCategories.getWriteTranscriptModel()):
     """
-    Generate a structured transcript with intro, body paragraphs, and conclusion
+    Generate a complete transcript
     
     Args:
         topic: The main topic to focus on
-        subtopics: List of subtopics for body paragraphs
         model: The OpenAI model to use
         
     Returns:
         Path to the generated transcript file
     """
     try:
-        # If no subtopics provided, use a default set
-        if not subtopics:
-            print("[INFO] No subtopics provided, using default subtopics")
-            subtopics = ["Key events", "Important figures", "Strategic significance"]
-        
         print(f"[INFO] Generating transcript for topic: {topic}")
-        print(f"[INFO] Subtopics: {', '.join(subtopics)}")
         
         # Create output directory if it doesn't exist
         output_dir = "Transcript"
@@ -124,37 +70,18 @@ def generate_transcript(topic="History", subtopics=None, model=ModelCategories.g
         filename = f"ww2_{topic.lower().replace(' ', '_')}_transcript.txt"
         transcript_path = os.path.join(output_dir, filename)
         
-        # Track the full transcript as we generate it
-        full_transcript = ""
-        
-        # Helper function to write the full transcript to file
-        def write_transcript_to_file():
-            with open(transcript_path, 'w', encoding='utf-8') as f:
-                f.write(full_transcript)
-        
-        # Generate intro
-        print("[INFO] Generating introduction...")
+        # Find relevant research if available
+        print("[INFO] Finding relevant research...")
         relevant_research = find_relevant_research(topic)
-        intro = generate_transcript_section("intro", topic, full_transcript, relevant_research, model=model)
-        full_transcript += intro + "\n\n"
-        write_transcript_to_file()
-        print("[INFO] Introduction written to file")
         
-        # Generate body paragraphs
-        for subtopic in subtopics:
-            print(f"[INFO] Generating body paragraph for subtopic: {subtopic}")
-            body = generate_transcript_section("body", topic, full_transcript, subtopic, relevant_research, model=model)
-            full_transcript += body + "\n\n"
-            write_transcript_to_file()
-            print(f"[INFO] Body paragraph for {subtopic} written to file")
+        # Generate the complete transcript
+        print("[INFO] Generating complete transcript...")
+        transcript = generate_complete_transcript(topic, relevant_research, model=model)
         
-        # Generate conclusion
-        print("[INFO] Generating conclusion...")
-        conclusion = generate_transcript_section("conclusion", topic, full_transcript, subtopics, relevant_research, model=model)
-        full_transcript += conclusion
-        write_transcript_to_file()
-        print("[INFO] Conclusion written to file")
-            
+        # Write to file
+        with open(transcript_path, 'w', encoding='utf-8') as f:
+            f.write(transcript)
+        
         print(f"[OK] Generated transcript saved to: {transcript_path}")
         return transcript_path
         
@@ -164,22 +91,14 @@ def generate_transcript(topic="History", subtopics=None, model=ModelCategories.g
 
 def main():
     # Set up argument parser
-    parser = argparse.ArgumentParser(description="Generate a World War 2 video transcript with structured sections")
+    parser = argparse.ArgumentParser(description="Generate a World War 2 video transcript")
     parser.add_argument("--topic", type=str, default="History", help="Main topic to focus on")
-    parser.add_argument("--subtopics", type=str, nargs="+", help="Subtopics for body paragraphs")
     parser.add_argument("--model", type=str, default=ModelCategories.getWriteTranscriptModel(), help="OpenAI model to use")
     
     args = parser.parse_args()
     
-    # Prompt for subtopics if not provided via command line
-    subtopics = args.subtopics
-    if not subtopics:
-        print(f"Enter subtopics for {args.topic} (comma-separated):")
-        subtopics_input = input("> ")
-        subtopics = [s.strip() for s in subtopics_input.split(",") if s.strip()]
-    
     # Generate the transcript
-    transcript_file = generate_transcript(args.topic, subtopics, args.model)
+    transcript_file = generate_transcript(args.topic, args.model)
     
     if transcript_file:
         print(f"[OK] Successfully generated transcript: {transcript_file}")

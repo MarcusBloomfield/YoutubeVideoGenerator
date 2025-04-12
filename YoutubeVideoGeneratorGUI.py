@@ -93,15 +93,14 @@ def set_api_key(api_key):
     return "API key set successfully"
 
 @eel.expose
-def generate_transcript(topic, subtopics):
-    """Generate a transcript with the given topic and subtopics"""
+def generate_transcript(topic):
+    """Generate a transcript with the given topic"""
     if not os.environ.get("OPENAI_API_KEY"):
         log_message("Error: OpenAI API key not set", 'error')
         return "Error: OpenAI API key not set. Please set it in the Settings tab."
     
     # Progress updates
     log_message(f"Generating transcript for topic: {topic}", 'info')
-    log_message(f"Subtopics: {', '.join(subtopics)}", 'info')
     update_progress(10, "Starting transcript generation...")
     
     try:
@@ -111,8 +110,7 @@ def generate_transcript(topic, subtopics):
         # Capture the output of the function
         output = capture_stdout(
             VideoTranscriptGenerator.generate_transcript,
-            topic=topic,
-            subtopics=subtopics
+            topic=topic
         )
         
         # Final progress update

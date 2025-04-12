@@ -46,8 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Transcript generation
     document.getElementById('generate-transcript').addEventListener('click', async function() {
         const topic = document.getElementById('topic').value;
-        const subtopicsText = document.getElementById('subtopics').value;
-        const subtopics = subtopicsText.split(',').map(s => s.trim()).filter(s => s.length > 0);
         
         if (!topic) {
             showMessage('Please enter a topic', 'error');
@@ -58,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Generate the transcript
-            const result = await eel.generate_transcript(topic, subtopics)();
+            const result = await eel.generate_transcript(topic)();
             
             // Get the actual transcript file content
             const transcriptContent = await eel.get_latest_transcript_content()();
@@ -340,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add progress update function for the Python callbacks
     function update_progress(percent, message) {
-        const progressBar = document.getElementById('progress-bar');
+        const progressBar = document.getElementById('progress-bar-fill');
         const progressText = document.getElementById('progress-text');
         
         if (progressBar && progressText) {
@@ -348,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
             progressBar.setAttribute('aria-valuenow', percent);
             
             const displayMessage = message || `${percent}% Complete`;
-            progressText.textContent = displayMessage;
+            progressText.textContent = `${percent}% - ${displayMessage}`;
         }
     }
 
@@ -452,7 +450,7 @@ function showMessage(message, type = 'info') {
 // Expose JavaScript functions to Python
 eel.expose(update_progress);
 function update_progress(percent, message) {
-    const progressBar = document.getElementById('progress-bar');
+    const progressBar = document.getElementById('progress-bar-fill');
     const progressText = document.getElementById('progress-text');
     
     if (progressBar && progressText) {
@@ -460,7 +458,7 @@ function update_progress(percent, message) {
         progressBar.setAttribute('aria-valuenow', percent);
         
         const displayMessage = message || `${percent}% Complete`;
-        progressText.textContent = displayMessage;
+        progressText.textContent = `${percent}% - ${displayMessage}`;
     }
 }
 
@@ -502,4 +500,4 @@ function add_log(message, level = 'info') {
     if (selectedLevel !== 'all' && level !== selectedLevel) {
         logEntry.style.display = 'none';
     }
-} 
+}
