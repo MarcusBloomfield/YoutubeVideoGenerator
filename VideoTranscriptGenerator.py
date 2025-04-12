@@ -7,13 +7,11 @@ from OpenAiQuerying import query_openai, check_api_key
 from Prompts import TRANSCRIPT_GENERATION_PROMPT, TRANSCRIPT_WITH_RESEARCH_PROMPT, RESEARCH_MATCHING_PROMPT
 from Models import ModelCategories
 from ExpandTranscript import find_relevant_research
-import ProjectPathManager as paths
 
 def create_transcript_folder():
     """Create a Transcript folder if it doesn't exist"""
-    transcript_dir = paths.get_transcript_dir()
-    os.makedirs(transcript_dir, exist_ok=True)
-    print(f"[OK] Transcript folder ready at {transcript_dir}")
+    os.makedirs("Transcript", exist_ok=True)
+    print("[OK] Transcript folder ready")
 
 
 def generate_transcript_section(section_type, topic, full_transcript="", subtopics=None, relevant_research="", model=ModelCategories.getWriteTranscriptModel()):
@@ -42,19 +40,7 @@ def generate_transcript_section(section_type, topic, full_transcript="", subtopi
             - Preview what will be covered in the video
             - Length: 100 words
             - Format: Single paragraph optimized for narration
-            - No section headers or formatting- Style: War report format
-- Structure:
-  * Engaging historical context introduction
-  * Chronological coverage of key events
-  * Military strategies and tactical decisions
-  * Personal stories from soldiers
-  * Impact and significance analysis
-- Format: Single cohesive block of text
-- Tone: Engaging and educational
-- Content:
-  * Specific dates and locations
-  * Key figures
-  * Accurate historical details
+            - No section headers or formatting
             
             Current full transcript: {full_transcript}
             """
@@ -74,19 +60,7 @@ def generate_transcript_section(section_type, topic, full_transcript="", subtopi
             - Include personal stories if applicable
             - Length: 300 words
             - Format: Single paragraph optimized for narration
-            - No section headers or formatting- Style: War report format
-- Structure:
-  * Engaging historical context introduction
-  * Chronological coverage of key events
-  * Military strategies and tactical decisions
-  * Personal stories from soldiers
-  * Impact and significance analysis
-- Format: Single cohesive block of text
-- Tone: Engaging and educational
-- Content:
-  * Specific dates and locations
-  * Key figures
-  * Accurate historical details
+            - No section headers or formatting
             
             Current full transcript: {full_transcript}
             """
@@ -103,19 +77,7 @@ def generate_transcript_section(section_type, topic, full_transcript="", subtopi
             - Provide a thought-provoking closing statement
             - Length: 100 words
             - Format: Single paragraph optimized for narration
-            - No section headers or formatting- Style: War report format
-- Structure:
-  * Engaging historical context introduction
-  * Chronological coverage of key events
-  * Military strategies and tactical decisions
-  * Personal stories from soldiers
-  * Impact and significance analysis
-- Format: Single cohesive block of text
-- Tone: Engaging and educational
-- Content:
-  * Specific dates and locations
-  * Key figures
-  * Accurate historical details
+            - No section headers or formatting
             
             Current full transcript: {full_transcript}
             """
@@ -155,7 +117,7 @@ def generate_transcript(topic="History", subtopics=None, model=ModelCategories.g
         print(f"[INFO] Subtopics: {', '.join(subtopics)}")
         
         # Create output directory if it doesn't exist
-        output_dir = paths.get_transcript_dir()
+        output_dir = "Transcript"
         os.makedirs(output_dir, exist_ok=True)
         
         # Generate output filename

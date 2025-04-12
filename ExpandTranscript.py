@@ -1,245 +1,182 @@
 import os
 import sys
-import re
-import json
-import openai
-from OpenAiQuerying import query_openai
+import time
+from OpenAiQuerying import query_openai, check_api_key
+from Prompts import EXPAND_TRANSCRIPT_PROMPT, EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT, RESEARCH_MATCHING_PROMPT, EXPANSION_IDEA_PROMPT
 from Models import ModelCategories
-import ProjectPathManager as paths
 
 def count_words(text):
-    """Count the number of words in the given text"""
-    return len(re.findall(r'\b\w+\b', text))
+    """Count the number of words in a text"""
+    return len(text.split())
 
-def expand_transcript(transcript_path, loops=1, model=ModelCategories.getTranscriptExpansionModel(), words_needed=1000):
+def find_relevant_research(transcript_text, research_dir="Research"):
     """
-    Expand a transcript by adding more content
+    Find relevant research materials for expanding the transcript using OpenAI's semantic matching
+    
+    Args:
+        transcript_text: The transcript text to find relevant research for
+        research_dir: Directory containing research files
+        
+    Returns:
+        A string containing relevant research content
+    """
+    print(f"Looking for relevant research in {research_dir}...")
+    
+    if not os.path.exists(research_dir):
+        print(f"Research directory {research_dir} not found")
+        return ""
+        
+    # Get all text files in the research directory
+    research_files = [f for f in os.listdir(research_dir) 
+                     if f.endswith('.txt') and os.path.isfile(os.path.join(research_dir, f))]
+    
+    if not research_files:
+        print(f"No research files found in {research_dir}")
+        return ""
+        
+    print(f"Found {len(research_files)} research files")
+    
+    # Process each research file individually
+    relevant_research = []
+    for filename in research_files:
+        file_path = os.path.join(research_dir, filename)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Create prompt for this specific research file
+            print(f"Processing research file: {filename}")
+            prompt = RESEARCH_MATCHING_PROMPT.format(
+                transcript=transcript_text,
+                research_materials=f"--- RESEARCH: {filename} ---\n{content}",
+            )
+            
+            try:
+                # Query OpenAI for relevant content from this file
+                print(f"Querying OpenAI for relevant content from {filename}")
+                file_relevant_content = query_openai(prompt, model=ModelCategories.getDefaultModel())
+                if file_relevant_content:
+                    relevant_research.append(f"--- RESEARCH: {filename} ---\n{file_relevant_content}")
+                    print(f"Found relevant content in {filename}")
+                    print(f"Content: {file_relevant_content[:200]}")
+            except Exception as e:
+                print(f"Error processing research file {filename}: {e}")
+    
+    if relevant_research:
+        print(f"Successfully found relevant research in {len(relevant_research)} files using semantic matching")
+        return "\n\n".join(relevant_research)
+    else:
+        print("No relevant research found in any files")
+        return ""
+
+def expand_transcript(transcript_path, target_loops=5, model=ModelCategories.getResearchModel(), words_needed=1000):
+    """
+    Expand a transcript through a specified number of expansion loops using research materials
     
     Args:
         transcript_path: Path to the transcript file
-        loops: Number of expansion loops to perform
+        target_loops: Number of expansion loops to perform
         model: OpenAI model to use
-        words_needed: Target word count
-        
+        words_needed: Target number of words for expansion
+    
     Returns:
-        Path to the expanded transcript file
+        The expanded transcript text
     """
+    print(f"Processing transcript: {transcript_path}")
+    
     # Read the original transcript
     with open(transcript_path, 'r', encoding='utf-8') as f:
-        original_content = f.read().strip()
+        original_transcript = f.read().strip()
     
-    print(f"Original transcript word count: {count_words(original_content)}")
+    # Start with the original transcript
+    current_transcript = original_transcript
+    current_word_count = count_words(current_transcript)
+    print(f"Original word count: {current_word_count}")
     
-    # If we already have enough words, just return the original file
-    if count_words(original_content) >= words_needed:
-        print(f"Transcript already has enough words ({count_words(original_content)} >= {words_needed})")
-        return transcript_path
-    
-    # Determine filename for expanded transcript
-    transcript_dir = os.path.dirname(transcript_path)
-    if transcript_dir == "":
-        transcript_dir = paths.get_transcript_dir()
-    
-    original_filename = os.path.basename(transcript_path)
-    expanded_filename = f"expanded_{original_filename}"
-    expanded_path = os.path.join(transcript_dir, expanded_filename)
-    
-    # Find relevant research if available
-    relevant_research = find_relevant_research(original_content)
-    
-    # Perform expansion loops
-    content = original_content
-    for i in range(loops):
-        print(f"Expansion loop {i+1}/{loops}...")
-        
-        # Get current word count
-        current_words = count_words(content)
-        if current_words >= words_needed:
-            print(f"Reached target word count ({current_words} >= {words_needed})")
-            break
-        
-        additional_words = words_needed - current_words
-        print(f"Adding approximately {additional_words} more words...")
-        
-        # Create the expansion prompt
-        prompt = f"""
-        I need you to expand this transcript about World War II with more detailed content. The current word count is {current_words} and I need to add about {additional_words} more words.
-        
-        Please add more historical details, descriptions, context, and analysis to make the narrative more informative and engaging. Focus on:
-        
-        1. Adding specific dates, locations, and names of key figures
-        2. Explaining military strategy and tactical decisions
-        3. Including relevant statistics and numbers
-        4. Providing more context about the historical significance of events
-        5. Incorporating first-hand accounts or quotes where appropriate
-        
-        Original transcript:
-        ```
-        {content}
-        ```
-        
-        Research to incorporate:
-        ```
-        {relevant_research}
-        ```
-        
-        The expanded transcript should maintain the same overall structure but with significantly more content. 
-        Format as a single, cohesive narrative suitable for a YouTube video narration.
-        Return ONLY the expanded transcript with no comments or explanations.
-        """
-        
-        # Get the expansion from OpenAI
-        expanded_content = query_openai(prompt, model=model)
-        
-        if not expanded_content or expanded_content.strip() == "":
-            print("Warning: Received empty response from OpenAI API. Using original content.")
-            expanded_content = content
-            
-        # Save this iteration of expanded content
-        content = expanded_content
-        
-        # Save the expanded transcript
-        with open(expanded_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-            
-        print(f"Expanded transcript saved to: {expanded_path}")
-        print(f"New word count: {count_words(content)}")
-    
-    return expanded_path
-
-def find_relevant_research(content, research_dir=None):
-    """Find relevant research for the given content"""
-    research_dir = research_dir or paths.get_research_dir()
-    
-    if not os.path.exists(research_dir):
-        print(f"Research directory not found: {research_dir}")
-        return ""
-    
-    # Extract key topics from the content
-    topics = extract_topics(content)
-    if not topics:
-        print("No topics extracted from content")
-        return ""
-    
-    print(f"Extracted topics: {', '.join(topics)}")
-    
-    # Find research files containing the topics
-    relevant_files = []
-    for filename in os.listdir(research_dir):
-        if filename.endswith(".txt") or filename.endswith(".md"):
-            file_path = os.path.join(research_dir, filename)
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    file_content = f.read().lower()
-                
-                # Check if any topic is in the file content
-                matches = [topic for topic in topics if topic.lower() in file_content]
-                if matches:
-                    relevant_files.append((file_path, len(matches)))
-            except Exception as e:
-                print(f"Error reading research file {file_path}: {e}")
-    
-    # Sort by number of matches (descending)
-    relevant_files.sort(key=lambda x: x[1], reverse=True)
-    
-    # Only use top 3 most relevant files to avoid too much content
-    relevant_files = relevant_files[:3]
-    
-    # Combine relevant research content
-    combined_research = ""
-    for file_path, _ in relevant_files:
+    # Perform the specified number of expansion loops
+    for expansion_round in range(1, target_loops + 1):
+        print(f"Starting expansion round {expansion_round} of {target_loops}")
+        research_content = ""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                combined_research += content + "\n\n"
-            print(f"Including research from: {os.path.basename(file_path)}")
+            # Find research directly related to the transcript
+            research_content = find_relevant_research(current_transcript)
+            
+            if not research_content:
+                print("Warning: No relevant research found for transcript. Will attempt expansion without research.")
         except Exception as e:
-            print(f"Error reading research file {file_path}: {e}")
-    
-    # Limit research size to avoid token limits
-    if len(combined_research) > 10000:
-        combined_research = combined_research[:10000] + "..."
-        print("Research content truncated due to size limits")
+            print(f"Error finding relevant research: {e}")
+            research_content = ""
         
-    return combined_research
+        # Craft prompt for expansion that includes research materials
+        prompt = EXPAND_TRANSCRIPT_WITH_RESEARCH_PROMPT.format(
+            current_transcript=current_transcript,
+            words_needed=words_needed,
+            research_content=research_content
+        )
+        
+        try:
+            # Query OpenAI to rewrite and expand the text
+            expanded_transcript = query_openai(prompt, model=ModelCategories.getExpandTranscriptModel())
+            
+            if expanded_transcript:
+                # Replace current transcript with the expanded version
+                current_transcript = expanded_transcript
+                
+                # Update word count
+                current_word_count = count_words(current_transcript)
+                print(f"Current word count after round {expansion_round}: {current_word_count}")
+                
+                # Save the expanded transcript at each step
+                with open(transcript_path, 'w', encoding='utf-8') as f:
+                    f.write(current_transcript)
+                
+                print(f"Saved expanded transcript to {transcript_path}")
+            else:
+                print("Error: No response from OpenAI API")
+                break
+                
+        except Exception as e:
+            print(f"Error during expansion: {e}")
+            break
+            
+        # Pause between requests to respect rate limits
+        if expansion_round < target_loops:
+            print("Pausing before next expansion...")
+    
+    print(f"Final word count: {current_word_count}")
+    return current_transcript
 
-def extract_topics(content):
-    """Extract key topics from the content using OpenAI"""
-    prompt = f"""
-    Please extract 5-10 key topics or themes from this World War II transcript. 
-    Return only the list of topics as a valid JSON array of strings.
-    
-    Transcript:
-    ```
-    {content}
-    ```
-    """
-    
-    try:
-        response = query_openai(prompt)
-        
-        # Find anything that looks like a JSON array
-        match = re.search(r'\[.*?\]', response, re.DOTALL)
-        if match:
-            try:
-                topics = json.loads(match.group(0))
-                return topics
-            except json.JSONDecodeError:
-                print(f"Could not parse AI response as JSON: {response}")
-                # Fallback to extracting quoted strings
-                topics = re.findall(r'"([^"]+)"', response)
-                if topics:
-                    return topics
-        
-        # If we can't find proper JSON, just split by newlines and clean up
-        topics = [line.strip().strip('"-,').strip() for line in response.split('\n') if line.strip()]
-        return [topic for topic in topics if len(topic) > 3 and not topic.startswith('[') and not topic.startswith(']')]
-        
-    except Exception as e:
-        print(f"Error extracting topics: {e}")
-        return []
-
-def process_all_transcripts(transcript_dir=None, loops=1, research_dir=None, words_needed=1000):
-    """Process all transcript files in the directory"""
-    transcript_dir = transcript_dir or paths.get_transcript_dir()
-    research_dir = research_dir or paths.get_research_dir()
-    
-    if not os.path.exists(transcript_dir):
-        print(f"Transcript directory not found: {transcript_dir}")
+def process_all_transcripts(transcript_dir="Transcript", target_loops=1, research_dir="Research"):
+    """Process all transcript files in the given directory"""
+    # Ensure API key is available
+    api_key = check_api_key()
+    if not api_key:
+        print("Error: OpenAI API key not found")
         return
+        
+    print(f"Processing all transcripts in {transcript_dir} with {target_loops} expansion loops each")
+    print(f"Using research materials from {research_dir}")
     
+    # Get all text files in the transcript directory
     transcript_files = [f for f in os.listdir(transcript_dir) 
                        if f.endswith('.txt') and os.path.isfile(os.path.join(transcript_dir, f))]
     
     if not transcript_files:
-        print("No transcript files found")
+        print(f"No transcript files found in {transcript_dir}")
         return
-    
+        
     print(f"Found {len(transcript_files)} transcript files")
     
+    # Process each transcript
     for filename in transcript_files:
-        if 'expanded_' in filename:
-            print(f"Skipping already expanded file: {filename}")
-            continue
-            
         transcript_path = os.path.join(transcript_dir, filename)
-        print(f"\nProcessing: {filename}")
-        
-        try:
-            expanded_path = expand_transcript(
-                transcript_path, 
-                loops=loops, 
-                words_needed=words_needed
-            )
-            print(f"Expanded to: {os.path.basename(expanded_path)}")
-        except Exception as e:
-            print(f"Error expanding transcript {filename}: {e}")
+        expand_transcript(transcript_path, target_loops)
+        print(f"Completed expansion of {filename}")
+        print("-" * 50)
 
 if __name__ == "__main__":
     # Default directory and target loops
-    transcript_dir = paths.get_transcript_dir()
+    transcript_dir = "Transcript"
     target_loops = 1
-    research_dir = paths.get_research_dir()
+    research_dir = "Research"
     
     # Allow command line override
     if len(sys.argv) > 1:
