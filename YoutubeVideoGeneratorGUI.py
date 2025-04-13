@@ -25,6 +25,8 @@ import TranscriptPurifier
 import PurifyClipsData
 import OpenAiQuerying
 import RawVideoRenamer
+import CleanupProject
+import GenerateFullVideo
 from dotenv import load_dotenv
 
 # Initialize Eel
@@ -93,24 +95,29 @@ def set_api_key(api_key):
     return "API key set successfully"
 
 @eel.expose
-def generate_transcript(topic):
-    """Generate a transcript with the given topic"""
+def generate_transcript(topic, word_count=1000):
+    """Generate a transcript with the given topic and word count"""
     if not os.environ.get("OPENAI_API_KEY"):
         log_message("Error: OpenAI API key not set", 'error')
         return "Error: OpenAI API key not set. Please set it in the Settings tab."
     
     # Progress updates
-    log_message(f"Generating transcript for topic: {topic}", 'info')
+    log_message(f"Generating transcript for topic: {topic} with {word_count} words", 'info')
     update_progress(10, "Starting transcript generation...")
     
     try:
+        # Convert word_count to integer if it's a string
+        if isinstance(word_count, str):
+            word_count = int(word_count)
+            
         # Update progress
         update_progress(20, "Generating transcript...")
         
         # Capture the output of the function
         output = capture_stdout(
             VideoTranscriptGenerator.generate_transcript,
-            topic=topic
+            topic=topic,
+            word_count=word_count
         )
         
         # Final progress update
@@ -566,6 +573,141 @@ def get_latest_transcript_content():
     except Exception as e:
         log_message(f"Error reading transcript file: {str(e)}", 'error')
         return f"Error reading transcript file: {str(e)}"
+
+@eel.expose
+def generate_full_video(topic, word_count=1000, output_name=None):
+    """
+    Wrapper function for GenerateFullVideo.generate_full_video
+    
+    Args:
+        topic: The main topic for the video
+        word_count: The desired word count for the transcript
+        output_name: Optional name for the output video file
+        
+    Returns:
+        A summary of the operations performed
+    """
+    # Define functions for the CSV processing steps
+    def parse_transcripts_to_csv():
+        return ParseTranscriptsToCsv.main()
+    
+    def match_audio_to_transcript():
+        return MatchAudioToTranscriptInCsv.match_audio_to_transcript()
+    
+    def set_transcript_csv_length():
+        csv_file_path = "transcripts_data.csv"
+        return SetTranscriptCsvLength.update_csv_with_audio_lengths(csv_file_path)
+    
+    return GenerateFullVideo.generate_full_video(
+        topic=topic,
+        word_count=word_count,
+        output_name=output_name,
+        log_message=log_message,
+        update_progress=update_progress,
+        capture_stdout=capture_stdout,
+        generate_transcript=generate_transcript,
+        separate_transcript=TranscriptSeperator.process_all_transcripts,
+        parse_transcripts_to_csv=parse_transcripts_to_csv,
+        match_audio_to_transcript=match_audio_to_transcript,
+        set_transcript_csv_length=set_transcript_csv_length,
+        create_narration=create_narration,
+        generate_scenes=generate_scenes,
+        combine_media=combine_media,
+        cleanup_project=cleanup_project
+    )
+
+@eel.expose
+def generate_topic_from_theme(theme):
+    """
+    Generate a specific topic based on a broader theme
+    
+    Args:
+        theme: The general theme or category (e.g., "World War II", "Space Exploration")
+        
+    Returns:
+        The generated topic or error message
+    """
+    if not os.environ.get("OPENAI_API_KEY"):
+        log_message("Error: OpenAI API key not set", 'error')
+        return {"success": False, "message": "OpenAI API key not set. Please set it in the Settings tab."}
+    
+    log_message(f"Generating topic idea for theme: {theme}", 'info')
+    update_progress(10, "Generating topic idea...")
+    
+    try:
+        topic = GenerateFullVideo.generate_topic_idea(theme, log_message)
+        
+        if not topic:
+            log_message("Failed to generate topic", 'error')
+            update_progress(0, "")
+            return {"success": False, "message": "Failed to generate a topic. Please try again with a different theme."}
+        
+        log_message(f"Successfully generated topic: {topic}", 'info')
+        update_progress(100, "Topic generation complete!")
+        return {"success": True, "topic": topic}
+    except Exception as e:
+        error_msg = f"Error generating topic: {str(e)}"
+        log_message(error_msg, 'error')
+        update_progress(0, "")
+        return {"success": False, "message": error_msg}
+
+@eel.expose
+def generate_video_from_theme(theme, word_count=1000, output_name=None):
+    """
+    Generate a topic from a theme and then create a full video
+    
+    Args:
+        theme: The general theme to generate a topic from
+        word_count: The desired word count for the transcript
+        output_name: Optional name for the output video file
+        
+    Returns:
+        A summary of the operations performed
+    """
+    if not os.environ.get("OPENAI_API_KEY"):
+        log_message("Error: OpenAI API key not set", 'error')
+        return "Error: OpenAI API key not set. Please set it in the Settings tab."
+    
+    log_message(f"Starting video generation from theme: {theme}", 'info')
+    update_progress(5, "Generating topic...")
+    
+    try:
+        success, result, topic = GenerateFullVideo.generate_and_create_video(
+            theme=theme,
+            word_count=word_count,
+            output_name=output_name,
+            log_message=log_message,
+            update_progress=update_progress
+        )
+        
+        if not success:
+            log_message("Failed to generate video from theme", 'error')
+            update_progress(0, "")
+            return f"Error: {result}"
+        
+        return f"Generated topic: {topic}\n\n{result}"
+    except Exception as e:
+        error_msg = f"Error generating video from theme: {str(e)}"
+        log_message(error_msg, 'error')
+        update_progress(0, "")
+        return error_msg
+
+@eel.expose
+def cleanup_project():
+    """Clean up project directories by removing files from Transcript, Audio, and Scenes folders"""
+    log_message("Starting project cleanup...", 'info')
+    update_progress(10, "Starting project cleanup...")
+    
+    try:
+        # Capture output from CleanupProject with preserve_output=True to keep videos
+        output = capture_stdout(lambda: CleanupProject.clean_project(preserve_output=True))
+        
+        update_progress(100, "Project cleanup complete!")
+        log_message("Project cleanup completed successfully", 'info')
+        return output
+    except Exception as e:
+        log_message(f"Error during project cleanup: {str(e)}", 'error')
+        return f"Error: {str(e)}"
 
 # Run the Eel app
 def main():

@@ -24,7 +24,7 @@ class GenerateScenes:
             os.makedirs(directory)
             
     @staticmethod
-    def detect_and_trim_silence(audio, min_volume=0.01, max_silence_duration=1.0):
+    def detect_and_trim_silence(audio, min_volume=0.1, max_silence_duration=1.0):
         """Detect and trim silent periods longer than max_silence_duration seconds"""
         # Get audio array and sampling rate
         audio_array = audio.to_soundarray()

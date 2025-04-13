@@ -43,9 +43,29 @@ document.addEventListener('DOMContentLoaded', function() {
         showMessage('Settings saved successfully!', 'success');
     });
 
+    // Project cleanup
+    document.getElementById('cleanup-project').addEventListener('click', async function() {
+        // Confirm with user
+        if (!confirm('WARNING: This will delete all files in the Transcript, Audio, and Scenes folders. This action cannot be undone. Continue?')) {
+            return;
+        }
+        
+        showProgress('Cleaning project folders...');
+        try {
+            const result = await eel.cleanup_project()();
+            document.getElementById('cleanup-output').value = result;
+            hideProgress();
+            showMessage('Project folders cleaned successfully!', 'success');
+        } catch (error) {
+            hideProgress();
+            showMessage('Error cleaning project: ' + error, 'error');
+        }
+    });
+
     // Transcript generation
     document.getElementById('generate-transcript').addEventListener('click', async function() {
         const topic = document.getElementById('topic').value;
+        const wordCount = document.getElementById('word-count').value;
         
         if (!topic) {
             showMessage('Please enter a topic', 'error');
@@ -56,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Generate the transcript
-            const result = await eel.generate_transcript(topic)();
+            const result = await eel.generate_transcript(topic, wordCount)();
             
             // Get the actual transcript file content
             const transcriptContent = await eel.get_latest_transcript_content()();
@@ -165,6 +185,137 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             hideProgress();
             showMessage('Error combining media: ' + error, 'error');
+        }
+    });
+    
+    // Full Video Generation
+    document.getElementById('generate-full-video').addEventListener('click', async function() {
+        const topic = document.getElementById('full-video-topic').value;
+        const wordCount = document.getElementById('full-video-word-count').value;
+        const outputName = document.getElementById('full-video-output-name').value;
+        
+        if (!topic) {
+            showMessage('Please enter a topic', 'error');
+            return;
+        }
+
+        showProgress('Starting full video generation process...');
+        
+        try {
+            const result = await eel.generate_full_video(topic, wordCount, outputName)();
+            document.getElementById('full-video-output').value = result;
+            hideProgress();
+            showMessage('Full video generated successfully!', 'success');
+        } catch (error) {
+            hideProgress();
+            showMessage('Error generating full video: ' + error, 'error');
+        }
+    });
+    
+    // Topic Selection Tabs
+    const tabSelectors = document.querySelectorAll('.tab-selector');
+    tabSelectors.forEach(selector => {
+        selector.addEventListener('click', () => {
+            // Remove active class from all selectors and panels
+            document.querySelectorAll('.tab-selector').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.topic-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked selector and its target panel
+            selector.classList.add('active');
+            const targetPanel = selector.getAttribute('data-target');
+            document.getElementById(targetPanel).classList.add('active');
+            
+            // Show/hide the appropriate generate button
+            if (targetPanel === 'theme-topic-panel') {
+                document.getElementById('generate-from-theme').style.display = 'inline-block';
+                document.getElementById('generate-full-video').style.display = 'none';
+            } else {
+                document.getElementById('generate-from-theme').style.display = 'none';
+                document.getElementById('generate-full-video').style.display = 'inline-block';
+            }
+        });
+    });
+    
+    // Initially hide the generate from theme button
+    document.getElementById('generate-from-theme').style.display = 'none';
+    
+    // Generate Topic from Theme
+    document.getElementById('generate-topic').addEventListener('click', async function() {
+        const theme = document.getElementById('full-video-theme').value;
+        
+        if (!theme) {
+            showMessage('Please enter a theme', 'error');
+            return;
+        }
+        
+        showProgress('Generating topic from theme...');
+        
+        try {
+            const result = await eel.generate_topic_from_theme(theme)();
+            
+            if (result.success) {
+                document.getElementById('generated-topic').value = result.topic;
+                hideProgress();
+                showMessage('Topic generated successfully!', 'success');
+            } else {
+                document.getElementById('generated-topic').value = '';
+                hideProgress();
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            hideProgress();
+            showMessage('Error generating topic: ' + error, 'error');
+        }
+    });
+    
+    // Generate Full Video from Theme
+    document.getElementById('generate-from-theme').addEventListener('click', async function() {
+        const theme = document.getElementById('full-video-theme').value;
+        const generatedTopic = document.getElementById('generated-topic').value;
+        const wordCount = document.getElementById('full-video-word-count').value;
+        const outputName = document.getElementById('full-video-output-name').value;
+        
+        if (!theme) {
+            showMessage('Please enter a theme', 'error');
+            return;
+        }
+        
+        // If a topic has already been generated, confirm if user wants to regenerate
+        if (generatedTopic && !confirm('A topic has already been generated. Do you want to use this topic?')) {
+            showProgress('Generating new topic and video...');
+        } else if (generatedTopic) {
+            // Use the existing generated topic
+            showProgress('Starting full video generation process with generated topic...');
+            try {
+                const result = await eel.generate_full_video(generatedTopic, wordCount, outputName)();
+                document.getElementById('full-video-output').value = result;
+                hideProgress();
+                showMessage('Full video generated successfully!', 'success');
+                return;
+            } catch (error) {
+                hideProgress();
+                showMessage('Error generating full video: ' + error, 'error');
+                return;
+            }
+        } else {
+            showProgress('Generating topic and video...');
+        }
+        
+        try {
+            const result = await eel.generate_video_from_theme(theme, wordCount, outputName)();
+            document.getElementById('full-video-output').value = result;
+            
+            // Extract the generated topic from the result and update the field
+            const topicMatch = result.match(/Generated topic: (.+?)(?:\n|$)/);
+            if (topicMatch && topicMatch[1]) {
+                document.getElementById('generated-topic').value = topicMatch[1];
+            }
+            
+            hideProgress();
+            showMessage('Full video generated successfully!', 'success');
+        } catch (error) {
+            hideProgress();
+            showMessage('Error generating video from theme: ' + error, 'error');
         }
     });
     

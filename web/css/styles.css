@@ -164,6 +164,63 @@ textarea {
     background-color: var(--primary-hover);
 }
 
+.btn.danger {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.btn.danger:hover {
+    background-color: #c0392b;
+}
+
+.warning-text {
+    color: var(--warning-color);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* Topic Selection UI */
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid var(--light-gray);
+    margin-bottom: 15px;
+}
+
+.tab-selector {
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    border-bottom: 3px solid transparent;
+    margin-right: 10px;
+    color: var(--dark-gray);
+}
+
+.tab-selector:hover {
+    color: var(--primary-color);
+}
+
+.tab-selector.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 500;
+}
+
+.topic-panel {
+    display: none;
+    animation: fadeIn 0.3s;
+}
+
+.topic-panel.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* Progress bar */
 #progress-container {
     margin-top: 20px;

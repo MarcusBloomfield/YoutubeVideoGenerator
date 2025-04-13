@@ -14,7 +14,7 @@ def create_transcript_folder():
     print("[OK] Transcript folder ready")
 
 
-def generate_complete_transcript(topic, relevant_research="", model=ModelCategories.getWriteTranscriptModel()):
+def generate_complete_transcript(topic, relevant_research="", model=ModelCategories.getWriteTranscriptModel(), word_count=1000):
     """
     Generate a complete transcript for a video in one go
     
@@ -22,13 +22,14 @@ def generate_complete_transcript(topic, relevant_research="", model=ModelCategor
         topic: The main topic
         relevant_research: Any relevant research to incorporate
         model: The OpenAI model to use
+        word_count: The desired word count for the transcript (default: 1000)
         
     Returns:
         Generated transcript text
     """
     try:
         prompt = f"""
-       {topic} in 1000 words using {relevant_research}.
+       {topic} in {word_count} words using {relevant_research}.
         
         Requirements:
         - Format: Paragraphs optimized for narration
@@ -48,19 +49,20 @@ def generate_complete_transcript(topic, relevant_research="", model=ModelCategor
         print(f"[ERROR] Error generating transcript: {e}")
         return ""
 
-def generate_transcript(topic="History", model=ModelCategories.getWriteTranscriptModel()):
+def generate_transcript(topic="History", model=ModelCategories.getWriteTranscriptModel(), word_count=1000):
     """
     Generate a complete transcript
     
     Args:
         topic: The main topic to focus on
         model: The OpenAI model to use
+        word_count: The desired word count for the transcript (default: 1000)
         
     Returns:
         Path to the generated transcript file
     """
     try:
-        print(f"[INFO] Generating transcript for topic: {topic}")
+        print(f"[INFO] Generating transcript for topic: {topic} with {word_count} words")
         
         # Create output directory if it doesn't exist
         output_dir = "Transcript"
@@ -76,7 +78,7 @@ def generate_transcript(topic="History", model=ModelCategories.getWriteTranscrip
         
         # Generate the complete transcript
         print("[INFO] Generating complete transcript...")
-        transcript = generate_complete_transcript(topic, relevant_research, model=model)
+        transcript = generate_complete_transcript(topic, relevant_research, model=model, word_count=word_count)
         
         # Write to file
         with open(transcript_path, 'w', encoding='utf-8') as f:
@@ -94,11 +96,12 @@ def main():
     parser = argparse.ArgumentParser(description="Generate a World War 2 video transcript")
     parser.add_argument("--topic", type=str, default="History", help="Main topic to focus on")
     parser.add_argument("--model", type=str, default=ModelCategories.getWriteTranscriptModel(), help="OpenAI model to use")
+    parser.add_argument("--word-count", type=int, default=1000, help="Desired word count for the transcript")
     
     args = parser.parse_args()
     
     # Generate the transcript
-    transcript_file = generate_transcript(args.topic, args.model)
+    transcript_file = generate_transcript(args.topic, args.model, args.word_count)
     
     if transcript_file:
         print(f"[OK] Successfully generated transcript: {transcript_file}")

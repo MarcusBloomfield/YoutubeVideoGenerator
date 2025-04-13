@@ -24,6 +24,7 @@
                 <button class="tab-btn" data-tab="narration">Narration</button>
                 <button class="tab-btn" data-tab="scenes">Scenes</button>
                 <button class="tab-btn" data-tab="combine">Combine</button>
+                <button class="tab-btn" data-tab="full-video">Full Video</button>
                 <button class="tab-btn" data-tab="log">Log</button>
                 <button class="tab-btn" data-tab="settings">Settings</button>
             </div>
@@ -33,6 +34,10 @@
                 <div class="form-group">
                     <label for="topic">Main Topic:</label>
                     <input type="text" id="topic" value="Normandy Landing">
+                </div>
+                <div class="form-group">
+                    <label for="word-count">Word Count:</label>
+                    <input type="number" id="word-count" value="1000" min="500" step="100">
                 </div>
                 <div class="form-group">
                     <button id="generate-transcript" class="btn primary">Generate Transcript</button>
@@ -161,6 +166,62 @@
                 </div>
             </div>
 
+            <!-- NEW: Full Video Generation Tab -->
+            <div class="tab-content" id="full-video">
+                <h2>Generate Full Video</h2>
+                <p>Generate a complete video in one go - from transcript to final output.</p>
+
+                <!-- Topic Selection Section -->
+                <div class="topic-selection">
+                    <div class="form-group">
+                        <div class="tab-header">
+                            <button class="tab-selector active" data-target="manual-topic-panel">Specific Topic</button>
+                            <button class="tab-selector" data-target="theme-topic-panel">Generate from Theme</button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Topic Panel -->
+                    <div class="topic-panel active" id="manual-topic-panel">
+                        <div class="form-group">
+                            <label for="full-video-topic">Topic:</label>
+                            <input type="text" id="full-video-topic" value="Normandy Landing">
+                        </div>
+                    </div>
+
+                    <!-- Theme Topic Panel -->
+                    <div class="topic-panel" id="theme-topic-panel">
+                        <div class="form-group">
+                            <label for="full-video-theme">Theme:</label>
+                            <input type="text" id="full-video-theme" value="World War II">
+                        </div>
+                        <div class="form-group">
+                            <button id="generate-topic" class="btn">Generate Topic</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="generated-topic">Generated Topic:</label>
+                            <input type="text" id="generated-topic" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="full-video-word-count">Word Count:</label>
+                    <input type="number" id="full-video-word-count" value="1000" min="500" step="100">
+                </div>
+                <div class="form-group">
+                    <label for="full-video-output-name">Output Filename (optional):</label>
+                    <input type="text" id="full-video-output-name" placeholder="full_video_output">
+                </div>
+                <div class="form-group">
+                    <button id="generate-full-video" class="btn primary">Generate Full Video</button>
+                    <button id="generate-from-theme" class="btn primary">Generate from Theme</button>
+                </div>
+                <div class="form-group">
+                    <label for="full-video-output">Output:</label>
+                    <textarea id="full-video-output" rows="10" readonly></textarea>
+                </div>
+            </div>
+
             <!-- NEW: Log Window Tab -->
             <div class="tab-content" id="log">
                 <h2>Program Log</h2>
@@ -190,6 +251,16 @@
                 </div>
                 <div class="form-group">
                     <button id="save-settings" class="btn primary">Save Settings</button>
+                </div>
+                <hr>
+                <h3>Project Cleanup</h3>
+                <div class="form-group">
+                    <p class="warning-text">Warning: This will delete all files in the Transcript, Audio, and Scenes folders.</p>
+                    <button id="cleanup-project" class="btn danger">Clean Project Folders</button>
+                </div>
+                <div class="form-group">
+                    <label for="cleanup-output">Cleanup Output:</label>
+                    <textarea id="cleanup-output" rows="5" readonly></textarea>
                 </div>
             </div>
         </div>
