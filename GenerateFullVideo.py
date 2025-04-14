@@ -6,6 +6,7 @@ import VideoTranscriptGenerator
 import CreateNarration
 import GenerateScenes
 import Combine
+import MakeYoutubeShort  # Add import for YouTube Shorts
 import CleanupProject
 import OpenAiQuerying
 import TranscriptSeperator
@@ -112,7 +113,7 @@ Return ONLY the topic title (1-4 words), without quotes or additional text or an
         log_message(f"Error generating topic idea: {str(e)}", 'error')
         return None
 
-def generate_and_create_video(theme, word_count=1000, output_name=None, log_message=None, update_progress=None, model=None):
+def generate_and_create_video(theme, word_count=1000, output_name=None, log_message=None, update_progress=None, model=None, youtube_short=False):
     """
     Generate a topic based on a theme and then create a full video.
     
@@ -123,6 +124,7 @@ def generate_and_create_video(theme, word_count=1000, output_name=None, log_mess
         log_message: Function to log messages
         update_progress: Function to update progress
         model: The OpenAI model to use for topic generation
+        youtube_short: Whether to create a YouTube Short instead of regular video
         
     Returns:
         tuple: (success, message, topic) - success is a boolean indicating if the operation was successful,
@@ -154,12 +156,13 @@ def generate_and_create_video(theme, word_count=1000, output_name=None, log_mess
         word_count=word_count,
         output_name=output_name,
         log_message=log_message,
-        update_progress=update_progress
+        update_progress=update_progress,
+        youtube_short=youtube_short  # Pass the youtube_short parameter
     )
     
     return True, result, topic
 
-def generate_full_video(topic, word_count=1000, output_name=None, log_message=None, update_progress=None, capture_stdout=None, generate_transcript=None, create_narration=None, generate_scenes=None, combine_media=None, cleanup_project=None, separate_transcript=None, parse_transcripts_to_csv=None, match_audio_to_transcript=None, set_transcript_csv_length=None):
+def generate_full_video(topic, word_count=1000, output_name=None, log_message=None, update_progress=None, capture_stdout=None, generate_transcript=None, create_narration=None, generate_scenes=None, combine_media=None, cleanup_project=None, separate_transcript=None, parse_transcripts_to_csv=None, match_audio_to_transcript=None, set_transcript_csv_length=None, youtube_short=False):
     """Generate a full video by executing all steps in sequence:
     1. Clean up project folders
     2. Generate transcript
@@ -188,6 +191,7 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         generate_scenes: Function to generate scenes
         combine_media: Function to combine media
         cleanup_project: Function to clean up project
+        youtube_short: Whether to create a YouTube Short instead of regular video
     
     Returns:
         A summary of the operations performed
@@ -250,10 +254,16 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         generate_scenes = simple_generate_scenes
     
     if combine_media is None:
-        def simple_combine_media(output_name):
-            combiner = Combine.Combine()
-            return combiner.main(output_name)
-        combine_media = simple_combine_media
+        if youtube_short:
+            def simple_combine_media(output_name):
+                shorts_maker = MakeYoutubeShort.MakeYoutubeShort()
+                return shorts_maker.main(output_name)
+            combine_media = simple_combine_media
+        else:
+            def simple_combine_media(output_name):
+                combiner = Combine.Combine()
+                return combiner.main(output_name)
+            combine_media = simple_combine_media
     
     
     # Check for API key
@@ -265,10 +275,13 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
     if not output_name:
         # Convert topic to a suitable filename: lowercase, spaces to underscores, add date
         timestamp = datetime.datetime.now().strftime("%Y%m%d")
-        output_name = f"video_{topic.lower().replace(' ', '_')}_{timestamp}"
+        if youtube_short:
+            output_name = f"short_{topic.lower().replace(' ', '_')}_{timestamp}"
+        else:
+            output_name = f"video_{topic.lower().replace(' ', '_')}_{timestamp}"
         log_message(f"Generated output filename: {output_name}", 'info')
     
-    log_message(f"Starting full video generation for topic: {topic}", 'info')
+    log_message(f"Starting {'YouTube Short' if youtube_short else 'full video'} generation for topic: {topic}", 'info')
     results = []
     
     try:
@@ -323,10 +336,14 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         results.append(f"SCENE GENERATION:\n{scenes_result}")
         
         # Step 9: Combine media
-        log_message("Step 9/10: Combining media...", 'info')
-        update_progress(85, "Combining media...")
+        if youtube_short:
+            log_message("Step 9/10: Creating YouTube Short...", 'info')
+            update_progress(85, "Creating YouTube Short...")
+        else:
+            log_message("Step 9/10: Combining media...", 'info')
+            update_progress(85, "Combining media...")
         combine_result = capture_stdout(lambda: combine_media(output_name))
-        results.append(f"MEDIA COMBINATION:\n{combine_result}")
+        results.append(f"{'YOUTUBE SHORT CREATION' if youtube_short else 'MEDIA COMBINATION'}:\n{combine_result}")
         
         # Step 10: Clean up project
         log_message("Step 10/10: Final cleanup of project folders...", 'info')
@@ -338,12 +355,12 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         results.append(f"FINAL PROJECT CLEANUP:\n{cleanup_result}")
         
         # Process complete
-        update_progress(100, "Full video generation complete!")
-        log_message(f"Full video generation completed successfully. Output file: {output_name}", 'info')
+        update_progress(100, f"{'YouTube Short' if youtube_short else 'Full video'} generation complete!")
+        log_message(f"{'YouTube Short' if youtube_short else 'Full video'} generation completed successfully. Output file: {output_name}", 'info')
         
         return "\n\n====================\n\n".join(results)
     except Exception as e:
-        error_msg = f"Error during full video generation: {str(e)}"
+        error_msg = f"Error during {'YouTube Short' if youtube_short else 'full video'} generation: {str(e)}"
         log_message(error_msg, 'error')
         return error_msg
 
@@ -369,6 +386,9 @@ def main():
        
     6. List previously generated topics:
        python GenerateFullVideo.py --list-topics
+       
+    7. Create a YouTube Short instead of a regular video:
+       python GenerateFullVideo.py --topic "Amazing Facts" --youtube-short
     """
     import argparse
     from dotenv import load_dotenv
@@ -390,6 +410,7 @@ def main():
     parser.add_argument("--word-count", type=int, default=1000, help="Desired word count for the transcript")
     parser.add_argument("--output-name", type=str, help="Output filename (optional)")
     parser.add_argument("--model", type=str, help="OpenAI model to use (optional, uses default if not specified)")
+    parser.add_argument("--youtube-short", action="store_true", help="Create a YouTube Short instead of a regular video")
     
     args = parser.parse_args()
     
@@ -417,12 +438,13 @@ def main():
                 print("Error: Failed to generate a topic.")
         else:
             # Generate a topic from the theme and create a video
-            print(f"Generating video from theme: {args.theme}")
+            print(f"Generating {'YouTube Short' if args.youtube_short else 'video'} from theme: {args.theme}")
             success, result, topic = generate_and_create_video(
                 theme=args.theme,
                 word_count=args.word_count,
                 output_name=args.output_name,
-                model=args.model
+                model=args.model,
+                youtube_short=args.youtube_short
             )
             if success:
                 print(f"\nGenerated topic: {topic}\n")
@@ -434,11 +456,12 @@ def main():
             print("Warning: --topic-only flag is ignored when using --topic")
             
         # Generate the full video with the provided topic
-        print(f"Generating video with topic: {args.topic}")
+        print(f"Generating {'YouTube Short' if args.youtube_short else 'video'} with topic: {args.topic}")
         result = generate_full_video(
             topic=args.topic,
             word_count=args.word_count,
-            output_name=args.output_name
+            output_name=args.output_name,
+            youtube_short=args.youtube_short
         )
         print(result)
 
