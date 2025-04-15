@@ -113,7 +113,7 @@ def encode_image(image_path):
         print(f"Error encoding image: {e}")
         return None
 
-def query_openai(prompt, model=ModelCategories.getDefaultModel(), api_key=None, image_path=None):
+def query_openai(prompt, model=ModelCategories.getDefaultModel(), api_key=None, image_path=None, image_generation=False, image_size="1792x1024", image_quality="standard", image_style="natural"):
     """
     Query the OpenAI API with the given prompt and return the response.
     
@@ -122,14 +122,32 @@ def query_openai(prompt, model=ModelCategories.getDefaultModel(), api_key=None, 
         model (str): The OpenAI model to use (default: from ModelCategories)
         api_key (str): OpenAI API key (will use environment variable if not provided)
         image_path (str): Optional path to an image file to include in the query
+        image_generation (bool): Whether to generate an image using DALL-E
+        image_size (str): Size of the generated image (for DALL-E)
+        image_quality (str): Quality of the generated image (for DALL-E)
+        image_style (str): Style of the generated image (for DALL-E)
     
     Returns:
-        str: The text response from the API
+        str: The text response from the API or image URL for DALL-E
     """
     # Create a client instance with the API key
     client = OpenAI(api_key=api_key)
     
     try:
+        if image_generation:
+            # Use DALL-E 3 for image generation
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size=image_size,
+                quality=image_quality,
+                style=image_style,
+                n=1
+            )
+            
+            # Return the URL of the generated image
+            return response.data[0].url
+            
         # Prepare messages based on whether an image is included
         if image_path and os.path.exists(image_path):
             # Vision-capable models

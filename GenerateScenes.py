@@ -9,6 +9,9 @@ import shutil
 from Prompts import CLIP_MATCHING_PROMPT, SCENE_GENERATION_PROMPT
 from Models import ModelCategories
 import numpy as np
+import sys
+import json
+from datetime import datetime
 
 class GenerateScenes:
     """Class for generating video scenes by matching transcripts with clips"""
@@ -170,6 +173,11 @@ class GenerateScenes:
                     "keywords": clip['keywords'],
                     "length": float(clip['length'])
                 })
+            
+            # Randomly select 100 clips (or all if less than 100 available)
+            num_clips_to_select = min(100, len(clips_list))
+            clips_list = random.sample(clips_list, num_clips_to_select)
+            print(f"[INFO] Randomly selected {num_clips_to_select} clips from {len(remaining_clips)} available clips")
             
             # Create prompt for OpenAI to match clips to transcript
             prompt = CLIP_MATCHING_PROMPT.format(

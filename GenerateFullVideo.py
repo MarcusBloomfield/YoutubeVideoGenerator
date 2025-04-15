@@ -113,7 +113,7 @@ Return ONLY the topic title (1-4 words), without quotes or additional text or an
         log_message(f"Error generating topic idea: {str(e)}", 'error')
         return None
 
-def generate_and_create_video(theme, word_count=1000, output_name=None, log_message=None, update_progress=None, model=None, youtube_short=False):
+def generate_and_create_video(theme, word_count=1000, output_name=None, log_message=None, update_progress=None, model=None, youtube_short=False, structured=False, num_subtopics=3):
     """
     Generate a topic based on a theme and then create a full video.
     
@@ -125,6 +125,8 @@ def generate_and_create_video(theme, word_count=1000, output_name=None, log_mess
         update_progress: Function to update progress
         model: The OpenAI model to use for topic generation
         youtube_short: Whether to create a YouTube Short instead of regular video
+        structured: Whether to create a structured essay transcript
+        num_subtopics: Number of subtopics to auto-generate for structured transcripts
         
     Returns:
         tuple: (success, message, topic) - success is a boolean indicating if the operation was successful,
@@ -157,12 +159,14 @@ def generate_and_create_video(theme, word_count=1000, output_name=None, log_mess
         output_name=output_name,
         log_message=log_message,
         update_progress=update_progress,
-        youtube_short=youtube_short  # Pass the youtube_short parameter
+        youtube_short=youtube_short,
+        structured=structured,
+        num_subtopics=num_subtopics
     )
     
     return True, result, topic
 
-def generate_full_video(topic, word_count=1000, output_name=None, log_message=None, update_progress=None, capture_stdout=None, generate_transcript=None, create_narration=None, generate_scenes=None, combine_media=None, cleanup_project=None, separate_transcript=None, parse_transcripts_to_csv=None, match_audio_to_transcript=None, set_transcript_csv_length=None, youtube_short=False):
+def generate_full_video(topic, word_count=1000, output_name=None, log_message=None, update_progress=None, capture_stdout=None, generate_transcript=None, create_narration=None, generate_scenes=None, combine_media=None, cleanup_project=None, separate_transcript=None, parse_transcripts_to_csv=None, match_audio_to_transcript=None, set_transcript_csv_length=None, youtube_short=False, structured=False, num_subtopics=3):
     """Generate a full video by executing all steps in sequence:
     1. Clean up project folders
     2. Generate transcript
@@ -192,6 +196,8 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         combine_media: Function to combine media
         cleanup_project: Function to clean up project
         youtube_short: Whether to create a YouTube Short instead of regular video
+        structured: Whether to create a structured essay transcript
+        num_subtopics: Number of subtopics to auto-generate for structured transcripts
     
     Returns:
         A summary of the operations performed
@@ -221,7 +227,20 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         cleanup_project = lambda: CleanupProject.clean_project(preserve_output=True)
     
     if generate_transcript is None:
-        generate_transcript = lambda topic, word_count: VideoTranscriptGenerator.generate_transcript(topic=topic, word_count=word_count)
+        if structured:
+            # Custom function for structured transcript generation
+            generate_transcript = lambda topic, word_count: VideoTranscriptGenerator.generate_structured_transcript(
+                topic=topic, 
+                subtopics=None, 
+                model=ModelCategories.getWriteTranscriptModel(), 
+                num_subtopics=num_subtopics
+            )
+        else:
+            # Standard transcript generation
+            generate_transcript = lambda topic, word_count: VideoTranscriptGenerator.generate_transcript(
+                topic=topic, 
+                word_count=word_count
+            )
     
     if separate_transcript is None:
         separate_transcript = TranscriptSeperator.process_all_transcripts
@@ -281,7 +300,11 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
             output_name = f"video_{topic.lower().replace(' ', '_')}_{timestamp}"
         log_message(f"Generated output filename: {output_name}", 'info')
     
-    log_message(f"Starting {'YouTube Short' if youtube_short else 'full video'} generation for topic: {topic}", 'info')
+    if structured:
+        log_message(f"Starting {'YouTube Short' if youtube_short else 'full video'} generation with structured essay format for topic: {topic}", 'info')
+    else:
+        log_message(f"Starting {'YouTube Short' if youtube_short else 'full video'} generation for topic: {topic}", 'info')
+    
     results = []
     
     try:
@@ -294,8 +317,13 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         results.append(f"INITIAL PROJECT CLEANUP:\n{initial_cleanup_result}")
         
         # Step 2: Generate transcript
-        log_message("Step 2/10: Generating transcript...", 'info')
-        update_progress(15, "Generating transcript...")
+        if structured:
+            log_message(f"Step 2/10: Generating structured transcript with {num_subtopics} auto-generated subtopics...", 'info')
+            update_progress(15, "Generating structured transcript...")
+        else:
+            log_message("Step 2/10: Generating transcript...", 'info')
+            update_progress(15, "Generating transcript...")
+        
         transcript_result = capture_stdout(lambda: generate_transcript(topic, word_count))
         results.append(f"TRANSCRIPT GENERATION:\n{transcript_result}")
         
@@ -355,8 +383,12 @@ def generate_full_video(topic, word_count=1000, output_name=None, log_message=No
         results.append(f"FINAL PROJECT CLEANUP:\n{cleanup_result}")
         
         # Process complete
-        update_progress(100, f"{'YouTube Short' if youtube_short else 'Full video'} generation complete!")
-        log_message(f"{'YouTube Short' if youtube_short else 'Full video'} generation completed successfully. Output file: {output_name}", 'info')
+        if structured:
+            update_progress(100, f"{'YouTube Short' if youtube_short else 'Full video'} generation complete with structured essay format!")
+            log_message(f"{'YouTube Short' if youtube_short else 'Full video'} generation with structured essay format completed successfully. Output file: {output_name}", 'info')
+        else:
+            update_progress(100, f"{'YouTube Short' if youtube_short else 'Full video'} generation complete!")
+            log_message(f"{'YouTube Short' if youtube_short else 'Full video'} generation completed successfully. Output file: {output_name}", 'info')
         
         return "\n\n====================\n\n".join(results)
     except Exception as e:
@@ -389,6 +421,9 @@ def main():
        
     7. Create a YouTube Short instead of a regular video:
        python GenerateFullVideo.py --topic "Amazing Facts" --youtube-short
+       
+    8. Generate a structured essay format transcript:
+       python GenerateFullVideo.py --topic "Battle of Stalingrad" --structured --num-subtopics 5
     """
     import argparse
     from dotenv import load_dotenv
@@ -411,6 +446,8 @@ def main():
     parser.add_argument("--output-name", type=str, help="Output filename (optional)")
     parser.add_argument("--model", type=str, help="OpenAI model to use (optional, uses default if not specified)")
     parser.add_argument("--youtube-short", action="store_true", help="Create a YouTube Short instead of a regular video")
+    parser.add_argument("--structured", action="store_true", help="Generate a structured essay with intro, body, conclusion")
+    parser.add_argument("--num-subtopics", type=int, default=3, help="Number of subtopics to auto-generate for structured transcripts")
     
     args = parser.parse_args()
     
@@ -444,7 +481,9 @@ def main():
                 word_count=args.word_count,
                 output_name=args.output_name,
                 model=args.model,
-                youtube_short=args.youtube_short
+                youtube_short=args.youtube_short,
+                structured=args.structured,
+                num_subtopics=args.num_subtopics
             )
             if success:
                 print(f"\nGenerated topic: {topic}\n")
@@ -461,7 +500,9 @@ def main():
             topic=args.topic,
             word_count=args.word_count,
             output_name=args.output_name,
-            youtube_short=args.youtube_short
+            youtube_short=args.youtube_short,
+            structured=args.structured,
+            num_subtopics=args.num_subtopics
         )
         print(result)
 
