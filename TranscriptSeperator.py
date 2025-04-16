@@ -15,6 +15,15 @@ def get_transcript_files(folder_path="Transcript"):
                 transcript_files.append(os.path.join(folder_path, file))
     return transcript_files
 
+def clean_text(text):
+    """Remove unwanted symbols from text, keeping alphanumeric chars and basic punctuation"""
+    # Keep letters, numbers, spaces, and basic punctuation (periods, commas, question marks, etc.)
+    # Replace other symbols with spaces
+    cleaned_text = re.sub(r'[^\w\s.,?!\'"-]', ' ', text)
+    # Remove extra spaces
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    return cleaned_text
+
 def split_transcript_by_paragraphs(transcript_path):
     """Split transcript file into paragraphs"""
     with open(transcript_path, 'r', encoding='utf-8') as file:
@@ -36,6 +45,9 @@ def save_paragraphs(paragraphs, original_filename, output_folder="Transcript"):
     saved_files = []
     for i, paragraph in enumerate(paragraphs):
         if paragraph.strip():  # Skip empty paragraphs
+            # Clean text of unwanted symbols
+            cleaned_paragraph = clean_text(paragraph.strip())
+            
             # Generate UUID
             unique_id = str(uuid.uuid4())
             
@@ -46,7 +58,7 @@ def save_paragraphs(paragraphs, original_filename, output_folder="Transcript"):
             
             # Save paragraph to new file
             with open(new_filepath, 'w', encoding='utf-8') as file:
-                file.write(paragraph.strip())
+                file.write(cleaned_paragraph)
             
             saved_files.append(new_filepath)
             print(f"Created file: {new_filename}")

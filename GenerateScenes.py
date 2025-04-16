@@ -277,6 +277,10 @@ class GenerateScenes:
             # Ensure audio doesn't exceed video duration
             if audio.duration > final_clip.duration:
                 audio = audio.subclipped(0, final_clip.duration)
+            # Ensure video doesn't exceed audio duration (no visuals without audio)
+            elif final_clip.duration > audio.duration:
+                final_clip = final_clip.subclipped(0, audio.duration + 1)
+                print(f"Trimmed video to match audio duration: {audio.duration}s")
             
             # Create final clip with audio
             final_clip_with_audio = final_clip.with_audio(audio)
