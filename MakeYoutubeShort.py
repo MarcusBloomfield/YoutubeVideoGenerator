@@ -1,7 +1,8 @@
 import os
 import re
+import argparse
 from pathlib import Path
-from moviepy import VideoFileClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 def extract_order_number(filename):
     """Extract the ordering number from the start of the filename."""
@@ -47,8 +48,10 @@ class MakeYoutubeShort:
         
         # Output file path in the Output folder
         if not output_name:
-            output_name = "youtube_short.mp4"
-        elif not output_name.lower().endswith('.mp4'):
+            output_name = "youtube_short"
+        
+        # Ensure output name has .mp4 extension
+        if not output_name.lower().endswith('.mp4'):
             output_name = f"{output_name}.mp4"
             
         output_file = os.path.join(self.output_folder, output_name)
@@ -88,10 +91,17 @@ class MakeYoutubeShort:
             traceback.print_exc()
             return None
 
+def parse_arguments():
+    """Parse command-line arguments"""
+    parser = argparse.ArgumentParser(description="Create a YouTube Shorts compatible video from clips in the Scenes folder")
+    parser.add_argument("--output", type=str, default="youtube_short", help="Output filename (without .mp4 extension)")
+    return parser.parse_args()
+
 def make_youtube_short(output_name=None):
     """Create a YouTube Shorts compatible video from clips in the Scenes folder"""
     shorts_maker = MakeYoutubeShort()
     return shorts_maker.main(output_name)
 
 if __name__ == "__main__":
-    make_youtube_short()
+    args = parse_arguments()
+    make_youtube_short(args.output)

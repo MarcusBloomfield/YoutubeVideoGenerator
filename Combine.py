@@ -1,7 +1,7 @@
 import os
 import re
 from pathlib import Path
-from moviepy import VideoFileClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
 def extract_order_number(filename):
     """Extract the ordering number from the start of the filename."""

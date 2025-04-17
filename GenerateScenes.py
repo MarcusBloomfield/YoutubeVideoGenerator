@@ -2,7 +2,7 @@ import os
 import csv
 import subprocess
 import pandas as pd
-from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips, concatenate_audioclips
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips, concatenate_audioclips
 from OpenAiQuerying import query_openai, check_api_key
 import random
 import shutil
@@ -26,75 +26,7 @@ class GenerateScenes:
         if not os.path.exists(directory):
             os.makedirs(directory)
             
-    @staticmethod
-    def detect_and_trim_silence(audio, min_volume=0.1, max_silence_duration=1.0):
-        """Detect and trim silent periods longer than max_silence_duration seconds"""
-        # Get audio array and sampling rate
-        audio_array = audio.to_soundarray()
-        fps = audio.fps
-        
-        # Calculate volume at each point (combine channels if stereo)
-        if len(audio_array.shape) > 1 and audio_array.shape[1] > 1:
-            volume = np.sqrt(np.mean(audio_array**2, axis=1))
-        else:
-            volume = np.abs(audio_array)
-            
-        # Detect silent regions (below min_volume)
-        is_silent = volume < min_volume
-        
-        # Find silence boundaries
-        silence_start = np.where(np.concatenate(([False], is_silent[:-1] == False, [False])) & 
-                                np.concatenate(([False], is_silent[1:] == True, [False])))[0]
-        silence_end = np.where(np.concatenate(([False], is_silent[:-1] == True, [False])) & 
-                                np.concatenate(([False], is_silent[1:] == False, [False])))[0]
-        
-        # Convert frame indices to time
-        silence_start_time = silence_start / fps
-        silence_end_time = silence_end / fps
-        
-        # Calculate silence durations
-        silence_durations = silence_end_time - silence_start_time
-        
-        # Identify long silences to trim
-        long_silences = []
-        for i in range(len(silence_start_time)):
-            if silence_durations[i] > max_silence_duration:
-                # Keep max_silence_duration/2 at the beginning and end of each silence
-                half_silence = max_silence_duration / 2
-                # If silence is longer than allowed, add to trim list
-                long_silences.append((silence_start_time[i] + half_silence, 
-                                     silence_end_time[i] - half_silence))
-        
-        # If no long silences found, return original audio
-        if not long_silences:
-            return audio
-            
-        # Trim the audio by creating subclips and concatenating
-        if long_silences:
-            print(f"Found {len(long_silences)} silence periods longer than {max_silence_duration}s")
-            
-            # Create list of audio segments to keep
-            subclips = []
-            last_end = 0
-            
-            for start, end in long_silences:
-                # Add segment before silence
-                if start > last_end:
-                    subclips.append(audio.subclip(last_end, start))
-                last_end = end
-                
-            # Add final segment after last silence
-            if last_end < audio.duration:
-                subclips.append(audio.subclip(last_end, audio.duration))
-                
-            # Concatenate all non-silence segments
-            if subclips:
-                return concatenate_audioclips(subclips)
-            else:
-                return audio
-        
-        return audio
-
+   
     def generate_scenes_by_matching(self):
         """Generate video scenes by matching transcripts with clips"""
         # Ensure output directory exists
@@ -231,15 +163,6 @@ class GenerateScenes:
             if success:
                 print(f"Created scene: {output_file}")
                 
-                # Move transcript file to archive directory
-                if os.path.exists(transcript_file):
-                    transcript_filename = os.path.basename(transcript_file)
-                    archive_path = os.path.join(transcript_archive_dir, transcript_filename)
-                    try:
-                        shutil.move(transcript_file, archive_path)
-                        print(f"Moved transcript to {archive_path}")
-                    except Exception as e:
-                        print(f"Error moving transcript file: {e}")
             
         # Print summary at the end
         print(f"Generation complete. Used {len(used_clip_ids)} unique clips across all scenes.")
@@ -270,20 +193,19 @@ class GenerateScenes:
             
             # Process audio to remove dead air longer than 1 second
             print("Analyzing audio for long silent periods...")
-            audio = self.detect_and_trim_silence(audio, max_silence_duration=1.0)
             
             print(f"Audio duration after silence trimming: {audio.duration}, Video duration: {final_clip.duration}")
             
             # Ensure audio doesn't exceed video duration
             if audio.duration > final_clip.duration:
-                audio = audio.subclipped(0, final_clip.duration)
+                audio = audio.subclip(0, final_clip.duration)
             # Ensure video doesn't exceed audio duration (no visuals without audio)
             elif final_clip.duration > audio.duration:
-                final_clip = final_clip.subclipped(0, audio.duration + 1)
+                final_clip = final_clip.subclip(0, audio.duration + 1)
                 print(f"Trimmed video to match audio duration: {audio.duration}s")
             
             # Create final clip with audio
-            final_clip_with_audio = final_clip.with_audio(audio)
+            final_clip_with_audio = final_clip.set_audio(audio)
             
             # Write the output file
             final_clip_with_audio.write_videofile(

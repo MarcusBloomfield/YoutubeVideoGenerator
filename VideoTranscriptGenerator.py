@@ -14,6 +14,59 @@ def create_transcript_folder():
     print("[OK] Transcript folder ready")
 
 
+def save_transcript(transcript_text, topic, structured=False, output_dir="Transcript"):
+    """
+    Saves a transcript to a file
+    
+    Args:
+        transcript_text: The transcript content to save
+        topic: The main topic (used for filename generation)
+        structured: Whether this is a structured transcript (affects filename)
+        output_dir: Directory to save the transcript in
+        
+    Returns:
+        Path to the saved transcript file
+    """
+    try:
+
+        if transcript_text == None or transcript_text == "":
+            print("[ERROR] Transcript text is empty")
+            return None
+
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Sanitize topic for filename - remove invalid characters
+        sanitized_topic = topic.lower()
+        # Replace invalid filename characters
+        for char in [':', '/', '\\', '*', '?', '"', '<', '>', '|']:
+            sanitized_topic = sanitized_topic.replace(char, '_')
+        sanitized_topic = sanitized_topic.replace(' ', '_')
+
+        # Generate output filename based on transcript type
+        type_suffix = "structured_transcript" if structured else "transcript"
+        filename = f"ww2_{sanitized_topic}_{type_suffix}.txt"
+        transcript_path = os.path.join(output_dir, filename)
+        
+        # Write to file
+        with open(transcript_path, 'w', encoding='utf-8') as f:
+            f.write(transcript_text)
+        
+        # Estimate actual word count for logging
+        actual_word_count = len(transcript_text.split())
+        
+        # Log appropriate message based on transcript type
+        if structured:
+            print(f"[OK] Generated structured transcript with approximately {actual_word_count} words saved to: {transcript_path}")
+        else:
+            print(f"[OK] Generated transcript saved to: {transcript_path}")
+            
+        return transcript_path
+        
+    except Exception as e:
+        print(f"[ERROR] Error saving transcript: {e}")
+        return None
+
 def generate_complete_transcript(topic, relevant_research="", model=ModelCategories.getWriteTranscriptModel(), word_count=1000):
     """
     Generate a complete transcript for a video in one go
@@ -268,14 +321,6 @@ def generate_structured_transcript(topic, subtopics=None, model=ModelCategories.
             
         print(f"[INFO] Generating structured transcript for topic: {topic} with target {total_word_count} words")
         
-        # Create output directory if it doesn't exist
-        output_dir = "Transcript"
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Generate output filename
-        filename = f"ww2_{topic.lower().replace(' ', '_')}_structured_transcript.txt"
-        transcript_path = os.path.join(output_dir, filename)
-        
         # Find relevant research if not skipped
         relevant_research = ""
         if not skip_research:
@@ -501,14 +546,8 @@ def generate_structured_transcript(topic, subtopics=None, model=ModelCategories.
             conclusion = query_openai(conclusion_prompt, model=model)
             full_transcript += conclusion
         
-        # Write to file
-        with open(transcript_path, 'w', encoding='utf-8') as f:
-            f.write(full_transcript)
-        
-        # Estimate actual word count
-        actual_word_count = len(full_transcript.split())
-        print(f"[OK] Generated structured transcript with approximately {actual_word_count} words saved to: {transcript_path}")
-        return transcript_path
+        # Save the transcript using the dedicated function
+        return save_transcript(full_transcript, topic, structured=True)
         
     except Exception as e:
         print(f"[ERROR] Error generating structured transcript: {e}")
@@ -530,14 +569,6 @@ def generate_transcript(topic="History", model=ModelCategories.getWriteTranscrip
     try:
         print(f"[INFO] Generating transcript for topic: {topic} with {word_count} words")
         
-        # Create output directory if it doesn't exist
-        output_dir = "Transcript"
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Generate output filename
-        filename = f"ww2_{topic.lower().replace(' ', '_')}_transcript.txt"
-        transcript_path = os.path.join(output_dir, filename)
-        
         # Find relevant research if not skipped
         relevant_research = ""
         if not skip_research:
@@ -550,12 +581,8 @@ def generate_transcript(topic="History", model=ModelCategories.getWriteTranscrip
         print("[INFO] Generating complete transcript...")
         transcript = generate_complete_transcript(topic, relevant_research, model=model, word_count=word_count)
         
-        # Write to file
-        with open(transcript_path, 'w', encoding='utf-8') as f:
-            f.write(transcript)
-        
-        print(f"[OK] Generated transcript saved to: {transcript_path}")
-        return transcript_path
+        # Save the transcript using the dedicated function
+        return save_transcript(transcript, topic, structured=False)
         
     except Exception as e:
         print(f"[ERROR] Error generating transcript: {e}")
@@ -580,7 +607,7 @@ def main():
     else:
         transcript_file = generate_transcript(args.topic, args.model, args.word_count, args.skip_research)
     
-    if transcript_file:
+    if transcript_file != None and transcript_file != "":
         print(f"[OK] Successfully generated transcript: {transcript_file}")
     else:
         print("[ERROR] Failed to generate transcript")
