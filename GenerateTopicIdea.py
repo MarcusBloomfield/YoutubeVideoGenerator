@@ -69,7 +69,7 @@ def generate_topic_idea(theme, model=None):
         
         if recent_topics:
             topics_to_avoid = ", ".join([f'"{t}"' for t in recent_topics])
-            prompt = f"""Generate a specific, engaging video topic related to "{theme}".
+            prompt = f"""Generate a specific, engaging/viral video topic related to "{theme}".
 Return ONLY the topic title (1-4 words), without quotes or additional text or any other type of formatting.
 
 IMPORTANT: Do NOT generate any of these previously used topics: {topics_to_avoid}"""

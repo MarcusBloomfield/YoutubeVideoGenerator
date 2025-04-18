@@ -188,6 +188,7 @@ Clip Requirements:
 - Total duration close to {transcript_length} seconds
 - Return as JSON array of clip IDs
 - Prefer shorter clips
+- Match each sentene with a clip
 
 ONLY RETURN THE JSON ARRAY OF CLIP IDs
 return Format Json:

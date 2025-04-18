@@ -1,0 +1,114 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+ALWAYS FOLLOW THESE RULES
+
+Find Changelog.txt and summaries and append changes you made to the Changelog.txt follow it's style
+DO NOT COMMIT UNLESS I TELL YOU TO
+DO NOT USE /// <summary>
+DO NOT USE #region
+DO NOT USE ABBREVIATIONS
+
+ALWAYS UPDATE ME ON WHAT YOU ARE DOING
+ALWAYS CREATE VERBOSE LOGGING
+ALWAYS USE EXPLICTS INSTEAD OF VAR
+
+# Programming Rules
+
+## SOLID Principles
+2. **Open/Closed Principle (OCP)**: Software entities should be open for extension but closed for modification.
+3. **Liskov Substitution Principle (LSP)**: Objects should be replaceable with instances of their subtypes.
+5. **Dependency Inversion Principle (DIP)**: Depend on abstractions, not concretions.
+
+## Other Core Principles
+6. **DRY (Don't Repeat Yourself)**: Avoid code duplication.
+7. **KISS (Keep It Simple, Stupid)**: Simplicity should be a key goal, and unnecessary complexity should be avoided.
+8. **YAGNI (You Aren't Gonna Need It)**: Don't implement something until it's necessary.
+9. **Separation of Concerns**: Different aspects of a program should be handled by distinct sections.
+10. **Composition Over Inheritance**: Favor object composition over class inheritance.
+
+## Game/Unity Development Principles
+11. **Component-Based Design**: Break down functionality into reusable components (core Unity architecture).
+12. **Object Pooling**: Reuse objects instead of destroying and recreating them.
+13. **Singleton Pattern**: Ensure a class has only one instance (e.g., AssetManager).
+14. **Command Pattern**: Encapsulate requests or operations as objects.
+15. **Observer Pattern**: Define a one-to-many dependency between objects.
+
+## Code Quality Principles
+16. **Defensive Programming**: Anticipate and handle potential errors.
+17. **Fail Fast**: Detect and report errors as early as possible.
+18. **Clean Code**: Write code that is easy to read, understand, and maintain.
+19. **Law of Demeter**: An object should only talk to its immediate friends.
+20. **Principle of Least Astonishment**: The behavior of a system should be obvious and predictable.
+
+## Performance Principles
+21. **Profile Before Optimizing**: Measure performance to identify actual bottlenecks.
+22. **Cache Expensive Operations**: Store results of costly operations for reuse.
+23. **Main Thread Discipline**: Keep the main thread responsive (especially important in Unity).
+24. **Resource Management**: Properly allocate and deallocate resources.
+
+## Naming Conventions
+25. **Meaningful Names**: Names should reveal intent.
+    - GetUserData() instead of GetData()
+    - isValid instead of flag1
+
+26. **Pronounceable Names**: Use names you can pronounce in conversation.
+    - generationTimestamp instead of genTS
+
+27. **Searchable Names**: Avoid single-letter names except for local variables in short methods.
+    - MAX_STUDENTS_PER_CLASS instead of just m
+
+28. **Class Names**: Use nouns or noun phrases, not verbs.
+    - Customer, WikiPage, Account, AddressParser
+
+29. **Method Names**: Use verbs or verb phrases.
+    - postPayment(), deletePage(), save()
+
+## Function/Method Rules
+30. **No Side Effects**: Functions shouldn't have unexpected side effects.
+      **Break Down large Methods\Functions into smaller Methods\Functions
+
+31. **Command Query Separation**: Functions should either *do something* or *answer something*, not both.
+
+## Comments
+32. **Comments Don't Make Up for Bad Code**: Improve the code instead of explaining it with comments.
+
+33. **Explain Intent**: Use comments to explain intent, not to narrate the code.
+
+34. **TODO Comments**: Use TODO comments for temporary, short-term solutions.
+
+## Error Handling
+35. **Use Exceptions Rather Than Return Codes**.
+
+36. **Don't Return Null**: Return empty collections instead.
+
+## Class Design
+37. **Small Classes**: Classes should be small with a single responsibility.
+
+38. **High Cohesion**: Class methods and variables should be cohesive.
+
+39. **Law of Demeter**: A method in a class should only call methods belonging to:
+    - Itself
+    - Objects passed as parameters
+    - Objects it creates
+    - Its direct component objects
+
+## Code Organization
+40. **Stepdown Rule**: Code should read like a top-down narrative.
+
+41. **Consistent Formatting**: The team should agree on a single formatting style.
+
+42. **Vertical Openness**: Separate concepts with blank lines.
+
+43. **Conceptual Affinity**: Related code should appear together.
+
+## Testing
+44. **Three Laws of TDD**:
+    1. Write only enough of a test to fail.
+    2. Write only enough production code to pass the test.
+
+45. **Clean Tests**: Tests should be readable and maintainable.
+
+46. **One Assert Per Test**: Ideally, one concept per test.

@@ -63,15 +63,15 @@ class MakeYoutubeShort:
             # Load all video clips
             clips = [VideoFileClip(mp4) for mp4 in mp4_files]
             
-            # Concatenate everything
-            combined_clip = concatenate_videoclips(clips)
+            if (len(clips) > 1):
+                # Concatenate everything
+                combined_clip = concatenate_videoclips(clips)
+            else:
+                combined_clip = clips[0]
             
             # Write the result with YouTube Shorts resolution
             combined_clip.write_videofile(
                 output_file, 
-                codec='libx264', 
-                audio_codec='aac',
-                preset='medium',
                 ffmpeg_params=[
                     # Force 9:16 aspect ratio for YouTube Shorts
                     '-vf', f'scale={self.shorts_width}:{self.shorts_height}:force_original_aspect_ratio=decrease,pad={self.shorts_width}:{self.shorts_height}:(ow-iw)/2:(oh-ih)/2:color=black'

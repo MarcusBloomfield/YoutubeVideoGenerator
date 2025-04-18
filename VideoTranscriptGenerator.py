@@ -94,9 +94,11 @@ def generate_complete_transcript(topic, relevant_research="", model=ModelCategor
         Create a complete, detailed transcript for a video about {topic} during World War II.
 
         IMPORTANT REQUIREMENTS:
+        - ALWAYS start the transcript with something to grab the attention of the viewer
         - Dramatise the events
         - Make it interesting
         - Make it engaging
+        - Make it viral
         - For A youtube short video
         - NO INTRO OR CONCLUSION
         - Total length: Approximately {word_count} words
