@@ -94,6 +94,11 @@ def generate_complete_transcript(topic, relevant_research="", model=ModelCategor
         Create a complete, detailed transcript for a video about {topic} during World War II.
 
         IMPORTANT REQUIREMENTS:
+        - Dramatise the events
+        - Make it interesting
+        - Make it engaging
+        - For A youtube short video
+        - NO INTRO OR CONCLUSION
         - Total length: Approximately {word_count} words
         - Content should be historically accurate with dates, names, and specific details
         - Events must be presented in chronological order
