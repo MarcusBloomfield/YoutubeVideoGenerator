@@ -26,7 +26,7 @@ class GenerateScenes:
     # Additional seconds to add beyond transcript length for buffer
     ADDITIONAL_TIME_BUFFER = 3
 
-    MAX_CLIP_LENGTH = 3
+    MAX_CLIP_LENGTH = 5
     
     def __init__(self):
         """Initialize the scene generator"""
