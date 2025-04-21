@@ -221,6 +221,44 @@ def sanitize_filename(filename):
     logger.info(f"Sanitized filename: {sanitized}")
     return sanitized
 
+def generate_subtopics(topic, num_subtopics=3, model=None):
+    """
+    Generate subtopics for a structured video based on the main topic
+    
+    Args:
+        topic: The main topic to generate subtopics for
+        num_subtopics: Number of subtopics to generate 
+        model: Optional OpenAI model to use
+        
+    Returns:
+        list: List of generated subtopics or None if generation failed
+    """
+    logger.info(f"Generating {num_subtopics} subtopics for topic: {topic}")
+    
+    # Check for API key
+    if not os.environ.get("OPENAI_API_KEY"):
+        logger.error("OpenAI API key not set")
+        return None
+    
+    try:
+        # Import here to avoid circular imports
+        from VideoTranscriptGenerator import generate_subtopics as generate_transcript_subtopics
+        
+        # Generate subtopics using the transcript generator's function
+        subtopics = generate_transcript_subtopics(topic, num_subtopics, model)
+        
+        if not subtopics:
+            logger.error("Failed to generate subtopics")
+            return None
+            
+        # Log the generated subtopics
+        logger.info(f"Generated {len(subtopics)} subtopics: {', '.join(subtopics)}")
+        return subtopics
+        
+    except Exception as e:
+        logger.error(f"Error generating subtopics: {str(e)}")
+        return None
+
 def generate_full_video(args=None):
     """
     Run the full video generation pipeline with user inputs or provided args
@@ -255,6 +293,7 @@ def generate_full_video(args=None):
         youtube_short = args.youtube_short
         structured = args.structured
         num_subtopics = args.num_subtopics
+        generate_subtopics_flag = args.generate_subtopics
         skip_research = args.skip_research
         output_name = args.output_name
     else:
@@ -297,23 +336,27 @@ def generate_full_video(args=None):
         youtube_short = get_user_confirmation("Generate a YouTube Short instead of a regular video?")
         
         # Option for structured essay format
-        
         if youtube_short:
             structured = False
+            generate_subtopics_flag = False
         else:
             structured = get_user_confirmation("Generate a structured essay format with intro, body, and conclusion?")
         
         # Number of subtopics if structured
         num_subtopics = 3
+        generate_subtopics_flag = False
         if structured:
-            subtopics_input = get_user_input("Number of subtopics for the structured format", default="3")
-            try:
-                num_subtopics = int(subtopics_input)
-                if num_subtopics < 1:
-                    num_subtopics = 3
-                    logger.warning("Number of subtopics must be at least 1, using default of 3")
-            except ValueError:
-                logger.warning(f"Invalid number of subtopics '{subtopics_input}', using default of 3")
+            generate_subtopics_flag = get_user_confirmation("Would you like to automatically generate subtopics?")
+            
+            if not generate_subtopics_flag:
+                subtopics_input = get_user_input("Number of subtopics for the structured format", default="3")
+                try:
+                    num_subtopics = int(subtopics_input)
+                    if num_subtopics < 1:
+                        num_subtopics = 3
+                        logger.warning("Number of subtopics must be at least 1, using default of 3")
+                except ValueError:
+                    logger.warning(f"Invalid number of subtopics '{subtopics_input}', using default of 3")
         
         # Skip research option
         skip_research = get_user_confirmation("Skip research for faster generation (but potentially less accurate)?")
@@ -337,6 +380,16 @@ def generate_full_video(args=None):
         elif not args and not get_user_confirmation("OpenAI API key not found. Do you want to continue anyway?"):
             return "Error: OpenAI API key not set. Please set it in your environment variables or .env file."
     
+    # Generate subtopics if requested
+    generated_subtopics = None
+    if structured and generate_subtopics_flag:
+        generated_subtopics = generate_subtopics(topic, num_subtopics)
+        if generated_subtopics:
+            print("\nGenerated subtopics:")
+            for i, subtopic in enumerate(generated_subtopics, 1):
+                print(f"{i}. {subtopic}")
+            print()
+    
     print("\n" + "="*80)
     print("Pipeline Configuration:")
     print(f"- Topic: {topic}")
@@ -345,6 +398,8 @@ def generate_full_video(args=None):
     print(f"- Structured Format: {'Yes' if structured else 'No'}")
     if structured:
         print(f"- Number of Subtopics: {num_subtopics}")
+        if generate_subtopics_flag and generated_subtopics:
+            print(f"- Generated Subtopics: {', '.join(generated_subtopics)}")
     print(f"- Skip Research: {'Yes' if skip_research else 'No'}")
     print(f"- Output Name: {output_name}")
     print("="*80 + "\n")
@@ -371,6 +426,11 @@ def generate_full_video(args=None):
     
     if structured:
         step_args += f" --structured --num-subtopics {num_subtopics}"
+        
+        # Add subtopics if they were generated
+        if generate_subtopics_flag and generated_subtopics:
+            subtopics_arg = " ".join([f"\"{subtopic}\"" for subtopic in generated_subtopics])
+            step_args += f" --subtopics {subtopics_arg}"
     
     if not run_step(
         f"python VideoTranscriptGenerator.py {step_args}",
@@ -473,7 +533,7 @@ def generate_full_video(args=None):
             return "Error: Failed to combine media. Check pipeline.log for details."
     
     # Update the changelog
-    update_changelog(topic, youtube_short, structured, output_name)
+    update_changelog(topic, youtube_short, structured, output_name, generate_subtopics_flag)
     
     # Final success message
     final_output = f"Output/{output_name}.mp4"
@@ -484,14 +544,20 @@ def generate_full_video(args=None):
     else:
         return f"Warning: Process completed but output file not found: {final_output}"
 
-def update_changelog(topic, youtube_short, structured, output_name):
+def update_changelog(topic, youtube_short, structured, output_name, generated_subtopics=False):
     """Update the Changelog.txt file with the latest generation"""
     try:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Sanitize topic for display in changelog
         safe_topic = topic.replace("\n", " ").replace("\r", "")
         entry = f"[{timestamp}] Generated {'YouTube Short' if youtube_short else 'video'} on topic: '{safe_topic}' "
-        entry += f"({'structured format' if structured else 'standard format'}) - Output: {output_name}.mp4\n"
+        
+        # Include format and subtopic generation details
+        format_details = "standard format"
+        if structured:
+            format_details = f"structured format{'with auto-generated subtopics' if generated_subtopics else ''}"
+            
+        entry += f"({format_details}) - Output: {output_name}.mp4\n"
         
         # Create changelog if it doesn't exist
         if not os.path.exists("Changelog.txt"):
@@ -531,6 +597,7 @@ def parse_arguments():
     parser.add_argument("--youtube-short", action="store_true", help="Create a YouTube Short instead of a regular video")
     parser.add_argument("--structured", action="store_true", help="Generate a structured essay with intro, body, conclusion")
     parser.add_argument("--num-subtopics", type=int, default=3, help="Number of subtopics to auto-generate for structured transcripts")
+    parser.add_argument("--generate-subtopics", action="store_true", help="Automatically generate subtopics instead of entering them manually")
     parser.add_argument("--skip-research", action="store_true", help="Skip finding relevant research for faster generation")
     parser.add_argument("--non-interactive", action="store_true", help="Run in non-interactive mode without prompting for input")
     
